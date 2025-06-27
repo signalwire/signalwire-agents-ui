@@ -135,6 +135,9 @@ def generate_skill_functions(skills: List[Dict[str, Any]], agent_id: str) -> Lis
 
 def generate_swml(agent_config: Dict[str, Any], agent_id: str) -> Dict[str, Any]:
     """Generate a SWML document from agent configuration."""
+    # Check if agent has basic auth configured
+    basic_auth_user = agent_config.get("basic_auth_user")
+    basic_auth_password = agent_config.get("basic_auth_password")
     # Build the main AI configuration
     ai_config = {
         "voice": agent_config.get("voice", "nova"),

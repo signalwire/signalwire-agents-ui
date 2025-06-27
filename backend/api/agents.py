@@ -29,6 +29,9 @@ class AgentConfig(BaseModel):
     post_prompt: Optional[str] = None
     post_prompt_url: Optional[str] = None
     hints: List[str] = Field(default_factory=list)
+    # Basic auth for SWML/SWAIG access
+    basic_auth_user: Optional[str] = Field(None, description="Basic auth username for SWML access")
+    basic_auth_password: Optional[str] = Field(None, description="Basic auth password for SWML access")
 
 
 class AgentCreate(BaseModel):
@@ -56,6 +59,15 @@ class AgentResponse(BaseModel):
     updated_at: datetime
 
 
+def format_swml_url(agent_id: str, config: Dict[str, Any]) -> str:
+    """Format SWML URL with basic auth credentials if configured."""
+    swml_url = get_swml_url(agent_id)
+    if config.get("basic_auth_user"):
+        # Show the format but not the actual password
+        swml_url = swml_url.replace("https://", f"https://{config['basic_auth_user']}:****@")
+    return swml_url
+
+
 @router.get("", response_model=List[AgentResponse])
 @limiter.limit("60/minute")
 async def list_agents(
@@ -73,7 +85,7 @@ async def list_agents(
             name=agent.name,
             description=agent.description,
             config=agent.config,
-            swml_url=get_swml_url(str(agent.id)),
+            swml_url=format_swml_url(str(agent.id), agent.config),
             created_at=agent.created_at,
             updated_at=agent.updated_at
         )
@@ -117,7 +129,7 @@ async def create_agent(
         name=agent.name,
         description=agent.description,
         config=agent.config,
-        swml_url=get_swml_url(str(agent.id)),
+        swml_url=format_swml_url(str(agent.id), agent.config),
         created_at=agent.created_at,
         updated_at=agent.updated_at
     )
@@ -142,7 +154,7 @@ async def get_agent(
         name=agent.name,
         description=agent.description,
         config=agent.config,
-        swml_url=get_swml_url(str(agent.id)),
+        swml_url=format_swml_url(str(agent.id), agent.config),
         created_at=agent.created_at,
         updated_at=agent.updated_at
     )
@@ -200,7 +212,7 @@ async def update_agent(
         name=agent.name,
         description=agent.description,
         config=agent.config,
-        swml_url=get_swml_url(str(agent.id)),
+        swml_url=format_swml_url(str(agent.id), agent.config),
         created_at=agent.created_at,
         updated_at=agent.updated_at
     )

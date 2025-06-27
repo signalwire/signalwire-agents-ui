@@ -69,7 +69,8 @@ INSERT INTO settings (key, value) VALUES
     ('elevenlabs_voices', '[]'),
     ('azure_voices', '[]'),
     ('openai_voices', '["alloy", "echo", "fable", "onyx", "nova", "shimmer"]'),
-    ('google_voices', '[]')
+    ('google_voices', '[]'),
+    ('global_basic_auth', '{"enabled": false, "username": "", "password": ""}')
 ON CONFLICT (key) DO NOTHING;
 
 -- Create default admin token (CHANGE THIS IN PRODUCTION!)
