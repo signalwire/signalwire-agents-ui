@@ -3,7 +3,8 @@ import { AuthProvider } from '@/hooks/useAuth'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { LoginPage } from '@/pages/Login'
 import { AgentsPage } from '@/pages/Agents'
-// import { AgentBuilderPage } from '@/pages/AgentBuilder'
+import { AgentBuilderPage } from '@/pages/AgentBuilder'
+import { Toaster } from '@/components/ui/toaster'
 // import { AdminPage } from '@/pages/Admin'
 
 function App() {
@@ -30,8 +31,7 @@ function App() {
           }
         />
         
-        {/* TODO: Add these routes */}
-        {/* <Route
+        <Route
           path="/agents/new"
           element={
             <ProtectedRoute>
@@ -49,7 +49,8 @@ function App() {
           }
         />
         
-        <Route
+        {/* TODO: Add admin route */}
+        {/* <Route
           path="/admin"
           element={
             <ProtectedRoute>
@@ -58,6 +59,7 @@ function App() {
           }
         /> */}
       </Routes>
+      <Toaster />
     </AuthProvider>
   )
 }

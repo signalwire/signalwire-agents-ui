@@ -1,20 +1,43 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Plus, Copy, Edit, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { agentsApi } from '@/api/agents'
 import { MainLayout } from '@/components/layout/MainLayout'
+import { toast } from '@/components/ui/use-toast'
 
 export function AgentsPage() {
+  const queryClient = useQueryClient()
+  
   const { data: agents, isLoading } = useQuery({
     queryKey: ['agents'],
     queryFn: agentsApi.list,
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: agentsApi.delete,
+    onSuccess: () => {
+      toast({ title: 'Agent deleted successfully' })
+      queryClient.invalidateQueries({ queryKey: ['agents'] })
+    },
+    onError: () => {
+      toast({
+        title: 'Failed to delete agent',
+        variant: 'destructive',
+      })
+    },
+  })
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
-    // TODO: Add toast notification
+    toast({ title: 'Copied to clipboard' })
+  }
+
+  const handleDelete = (agentId: string, agentName: string) => {
+    if (confirm(`Are you sure you want to delete "${agentName}"?`)) {
+      deleteMutation.mutate(agentId)
+    }
   }
 
   return (
@@ -113,10 +136,7 @@ export function AgentsPage() {
                       size="sm"
                       variant="outline"
                       className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                      onClick={() => {
-                        // TODO: Implement delete
-                        console.log('Delete:', agent.id)
-                      }}
+                      onClick={() => handleDelete(agent.id, agent.name)}
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
