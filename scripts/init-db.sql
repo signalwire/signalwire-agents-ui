@@ -36,12 +36,29 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Create audit log table
+CREATE TABLE IF NOT EXISTS audit_log (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    action VARCHAR(50) NOT NULL, -- CREATE, UPDATE, DELETE
+    entity_type VARCHAR(50) NOT NULL, -- agent, setting, token
+    entity_id VARCHAR(255) NOT NULL,
+    changes JSONB,
+    metadata JSONB, -- IP address, user agent, etc.
+    auth_token VARCHAR(255) -- Which token was used
+);
+
 -- Create triggers for updated_at
 CREATE TRIGGER update_agents_updated_at BEFORE UPDATE ON agents
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_settings_updated_at BEFORE UPDATE ON settings
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Create index for audit log queries
+CREATE INDEX idx_audit_log_entity ON audit_log(entity_type, entity_id);
+CREATE INDEX idx_audit_log_timestamp ON audit_log(timestamp DESC);
+CREATE INDEX idx_audit_log_token ON audit_log(auth_token);
 
 -- Insert default settings
 INSERT INTO settings (key, value) VALUES

@@ -23,7 +23,20 @@ RUN apt-get remove -y nodejs npm && \
 # Create app directory
 WORKDIR /app
 
-# Layer 2: Python dependencies (changes less frequently)
+# Layer 2a: Install signalwire-agents (local or from pip)
+# Copy signalwire-agents if it exists locally
+COPY signalwire-agents* ./signalwire-agents/
+
+# Install signalwire-agents - use local if present, otherwise from pip
+RUN if [ -d "./signalwire-agents" ]; then \
+        echo "Installing local signalwire-agents..." && \
+        pip3 install --no-cache-dir -e ./signalwire-agents; \
+    else \
+        echo "Installing signalwire-agents from pip..." && \
+        pip3 install --no-cache-dir signalwire-agents>=1.0.0; \
+    fi
+
+# Layer 2b: Python dependencies (changes less frequently)
 COPY backend/requirements.txt ./backend/
 RUN pip3 install --no-cache-dir -r backend/requirements.txt
 
