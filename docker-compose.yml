@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: agent_builder
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+      POSTGRES_DB: agent_builder
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agent_builder"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8430:8430"
+    environment:
+      DATABASE_URL: postgresql://agent_builder:${DB_PASSWORD:-changeme}@db:5432/agent_builder
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret-key}
+      HOSTNAME: tatooine.cantina.cloud
+      PORT: 8430
+      API_PORT: 8000
+      RATE_LIMIT_API: ${RATE_LIMIT_API:-100}
+      RATE_LIMIT_SWML: ${RATE_LIMIT_SWML:-1000}
+      SIGNALWIRE_JWT_SECRET: ${SIGNALWIRE_JWT_SECRET:-change-this-for-production}
+    volumes:
+      - /certs:/certs:ro
+      - app_logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  app_logs:
