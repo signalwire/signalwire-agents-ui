@@ -9,7 +9,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from .core.config import settings
-from .api import auth, agents, swml
+from .api import auth, agents, swml, admin
 
 # Configure logging
 logging.basicConfig(
@@ -60,6 +60,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.include_router(auth.router)
 app.include_router(agents.router)
 app.include_router(swml.router)  # Public endpoint, no /api prefix
+app.include_router(admin.router)
 
 # Health check endpoint
 @app.get("/api/health")

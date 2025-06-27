@@ -6,8 +6,9 @@ from pydantic import BaseModel
 from typing import Dict
 
 from ..core.database import get_db
-from ..core.models import Token
-from ..core.security import create_jwt_token, create_audit_log, get_request_metadata
+from ..models import Token
+from ..core.security import create_jwt_token
+from ..core.audit import create_audit_log, get_request_metadata
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 

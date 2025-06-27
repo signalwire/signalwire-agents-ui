@@ -17,6 +17,21 @@ export interface Settings {
     username: string
     password: string
   }
+  // Admin settings
+  organization_name?: string
+  support_email?: string
+  default_voice?: string
+  default_ai_model?: string
+  default_system_prompt?: string
+  enforce_basic_auth?: boolean
+  enable_audit_log?: boolean
+  jwt_expiration_hours?: number
+}
+
+export interface SecuritySettings {
+  global_basic_auth_enabled?: boolean
+  global_basic_auth_user?: string
+  global_basic_auth_password?: string
 }
 
 export const settingsApi = {
@@ -30,7 +45,20 @@ export const settingsApi = {
     return settings as Settings
   },
 
-  update: async (key: string, value: any): Promise<void> => {
-    await apiClient.put(`/admin/settings/${key}`, { value })
+  update: async (settings: Partial<Settings>): Promise<void> => {
+    // Update multiple settings at once
+    for (const [key, value] of Object.entries(settings)) {
+      await apiClient.put(`/admin/settings/${key}`, { value })
+    }
+  },
+
+  getSecuritySettings: async (): Promise<SecuritySettings> => {
+    const response = await apiClient.get('/api/admin/security')
+    return response.data
+  },
+
+  updateSecuritySettings: async (settings: SecuritySettings): Promise<SecuritySettings> => {
+    const response = await apiClient.put('/api/admin/security', settings)
+    return response.data
   },
 }

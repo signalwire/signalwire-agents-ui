@@ -3,11 +3,14 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create tokens table for authentication
 CREATE TABLE IF NOT EXISTS tokens (
-    id SERIAL PRIMARY KEY,
-    token VARCHAR(255) UNIQUE NOT NULL,
+    id VARCHAR(255) PRIMARY KEY,
+    token TEXT UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
-    active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL,
+    last_used_at TIMESTAMP,
+    created_by VARCHAR(255),
+    is_active BOOLEAN DEFAULT true
 );
 
 -- Create agents table
@@ -22,8 +25,10 @@ CREATE TABLE IF NOT EXISTS agents (
 
 -- Create settings table for admin configuration
 CREATE TABLE IF NOT EXISTS settings (
-    key VARCHAR(255) PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
+    key VARCHAR(255) UNIQUE NOT NULL,
     value JSONB NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -37,15 +42,21 @@ END;
 $$ language 'plpgsql';
 
 -- Create audit log table
-CREATE TABLE IF NOT EXISTS audit_log (
+CREATE TABLE IF NOT EXISTS audit_logs (
     id SERIAL PRIMARY KEY,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    action VARCHAR(50) NOT NULL, -- CREATE, UPDATE, DELETE
-    entity_type VARCHAR(50) NOT NULL, -- agent, setting, token
-    entity_id VARCHAR(255) NOT NULL,
-    changes JSONB,
-    metadata JSONB, -- IP address, user agent, etc.
-    auth_token VARCHAR(255) -- Which token was used
+    user_id VARCHAR(255) NOT NULL,
+    action VARCHAR(50) NOT NULL,
+    description TEXT NOT NULL,
+    metadata JSONB,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create users table for admin authentication
+CREATE TABLE IF NOT EXISTS users (
+    id VARCHAR(255) PRIMARY KEY,
+    username VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create triggers for updated_at
@@ -56,9 +67,9 @@ CREATE TRIGGER update_settings_updated_at BEFORE UPDATE ON settings
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Create index for audit log queries
-CREATE INDEX idx_audit_log_entity ON audit_log(entity_type, entity_id);
-CREATE INDEX idx_audit_log_timestamp ON audit_log(timestamp DESC);
-CREATE INDEX idx_audit_log_token ON audit_log(auth_token);
+CREATE INDEX idx_audit_logs_user ON audit_logs(user_id);
+CREATE INDEX idx_audit_logs_timestamp ON audit_logs(timestamp DESC);
+CREATE INDEX idx_audit_logs_action ON audit_logs(action);
 
 -- Insert default settings
 INSERT INTO settings (key, value) VALUES
@@ -73,7 +84,13 @@ INSERT INTO settings (key, value) VALUES
     ('global_basic_auth', '{"enabled": false, "username": "", "password": ""}')
 ON CONFLICT (key) DO NOTHING;
 
+-- Create default admin user
+INSERT INTO users (id, username, email) VALUES 
+    ('admin-user-id', 'admin', 'admin@example.com')
+ON CONFLICT (id) DO NOTHING;
+
 -- Create default admin token (CHANGE THIS IN PRODUCTION!)
-INSERT INTO tokens (token, name) VALUES 
-    ('admin-token-changeme', 'Default Admin Token')
-ON CONFLICT (token) DO NOTHING;
+INSERT INTO tokens (id, token, name, expires_at, created_by) VALUES 
+    ('default-token-id', 'admin-token-changeme', 'Default Admin Token', 
+     CURRENT_TIMESTAMP + INTERVAL '365 days', 'admin-user-id')
+ON CONFLICT (id) DO NOTHING;

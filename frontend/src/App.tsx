@@ -4,8 +4,8 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { LoginPage } from '@/pages/Login'
 import { AgentsPage } from '@/pages/Agents'
 import { AgentBuilderPage } from '@/pages/AgentBuilder'
+import { AdminPage } from '@/pages/Admin'
 import { Toaster } from '@/components/ui/toaster'
-// import { AdminPage } from '@/pages/Admin'
 
 function App() {
   return (
@@ -49,15 +49,14 @@ function App() {
           }
         />
         
-        {/* TODO: Add admin route */}
-        {/* <Route
+        <Route
           path="/admin"
           element={
             <ProtectedRoute>
               <AdminPage />
             </ProtectedRoute>
           }
-        /> */}
+        />
       </Routes>
       <Toaster />
     </AuthProvider>

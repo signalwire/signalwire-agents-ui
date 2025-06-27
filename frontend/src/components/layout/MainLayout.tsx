@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
-import { LogOut, Plus } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { LogOut, Plus, Settings } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
 
 interface MainLayoutProps {
   children: React.ReactNode
@@ -9,6 +9,7 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
   const { tokenName, logout } = useAuth()
+  const location = useLocation()
 
   return (
     <div className="min-h-screen bg-background">
@@ -16,9 +17,29 @@ export function MainLayout({ children }: MainLayoutProps) {
       <header className="border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link to="/" className="text-xl font-semibold">
-              SignalWire Agent Builder
-            </Link>
+            <div className="flex items-center gap-6">
+              <Link to="/" className="text-xl font-semibold">
+                SignalWire Agent Builder
+              </Link>
+              <nav className="hidden md:flex items-center gap-4">
+                <Link
+                  to="/agents"
+                  className={`text-sm font-medium transition-colors hover:text-primary ${
+                    location.pathname === '/agents' ? 'text-primary' : 'text-muted-foreground'
+                  }`}
+                >
+                  Agents
+                </Link>
+                <Link
+                  to="/admin"
+                  className={`text-sm font-medium transition-colors hover:text-primary ${
+                    location.pathname === '/admin' ? 'text-primary' : 'text-muted-foreground'
+                  }`}
+                >
+                  Admin
+                </Link>
+              </nav>
+            </div>
             
             <div className="flex items-center gap-4">
               <span className="text-sm text-muted-foreground hidden sm:inline">
