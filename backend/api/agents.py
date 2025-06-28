@@ -31,10 +31,23 @@ class AgentConfig(BaseModel):
     params: Dict[str, Any] = Field(default_factory=dict)
     post_prompt: Optional[str] = None
     post_prompt_url: Optional[str] = None
-    hints: List[str] = Field(default_factory=list)
+    hints: List[str] = Field(default_factory=list)  # Legacy, kept for compatibility
     # Basic auth for SWML/SWAIG access
     basic_auth_user: Optional[str] = Field(None, description="Basic auth username for SWML access")
     basic_auth_password: Optional[str] = Field(None, description="Basic auth password for SWML access")
+    
+    # New configuration fields
+    simple_hints: List[str] = Field(default_factory=list, description="Simple text hints")
+    pattern_hints: List[Dict[str, Any]] = Field(default_factory=list, description="Pattern-based hints with regex")
+    pronunciations: List[Dict[str, Any]] = Field(default_factory=list, description="Custom pronunciations")
+    global_data: Dict[str, Any] = Field(default_factory=dict, description="Global data available throughout conversation")
+    native_functions: List[str] = Field(default_factory=list, description="Enabled native SignalWire functions")
+    internal_fillers: Dict[str, Dict[str, List[str]]] = Field(default_factory=dict, description="Custom fillers for native functions")
+    record_call: bool = Field(default=False, description="Enable call recording")
+    record_format: str = Field(default="mp4", description="Recording format (mp4 or wav)")
+    record_stereo: bool = Field(default=True, description="Record in stereo")
+    post_prompt_config: Optional[Dict[str, Any]] = Field(None, description="Post-prompt summary configuration")
+    contexts_steps_config: Optional[Dict[str, Any]] = Field(None, description="Contexts and steps configuration")
 
 
 class AgentCreate(BaseModel):

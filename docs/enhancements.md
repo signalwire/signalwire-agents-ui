@@ -1,6 +1,20 @@
 # SignalWire Agent Builder UI Enhancements
 
-This document outlines the new configuration cards to be added to the Agent Builder UI based on the SignalWire SDK agent base class methods.
+This document outlines the new configuration cards to be added to the Agent Builder UI based on the SignalWire SDK agent base class methods, plus admin features for managing the skills marketplace.
+
+## Summary of Enhancements
+
+### Agent Configuration Cards:
+1. **Hints Configuration** - Simple text hints and regex pattern hints
+2. **Pronunciations Configuration** - Custom word pronunciations  
+3. **Global Data Configuration** - Persistent key-value data
+4. **Native Functions & Fillers** - Built-in functions with custom phrases
+5. **Recording Configuration** - Call recording settings
+6. **Post-Prompt Summary Configuration** - Built-in viewer or custom URL
+7. **Contexts & Steps Configuration** - Advanced conversation flows
+
+### Admin Features:
+- **Skills Marketplace Management** - Control which skills appear in the marketplace
 
 ## 1. Hints Configuration Card
 
@@ -147,46 +161,34 @@ agent = AgentBase(
 )
 ```
 
-## 6. Webhook Configuration Card
+## 6. Post-Prompt Summary Configuration Card
 
 ### Description
-Configure custom webhook URLs for SWAIG functions and post-prompt summaries.
+Configure how conversation summaries are handled after calls end.
 
 ### SDK Methods
 Located in `signalwire_agents/core/mixins/routing_mixin.py`:
 ```python
-def set_web_hook_url(self, url: str) -> 'RoutingMixin'
 def set_post_prompt_url(self, url: str) -> 'RoutingMixin'
-def add_swaig_query_params(self, params: Dict[str, str]) -> 'RoutingMixin'
-def clear_swaig_query_params(self) -> 'RoutingMixin'
 ```
 
 ### UI Implementation
-- SWAIG Webhook URL input field
 - Post-Prompt Summary configuration:
-  - Toggle: Use default renderer (enabled by default)
-  - When default renderer enabled: Show preview/example of summary UI
-  - When disabled: Custom URL input field
-- Query Parameters key-value editor
-- Validation for URL format
+  - Toggle: Use built-in summary viewer (enabled by default)
+  - When enabled: Show preview/example of the summary UI (to be implemented)
+  - When disabled: Custom URL input field for external handling
+- Validation for URL format when custom URL is used
 
 ### Post-Prompt Summary Behavior
-- Default: Post-prompt summaries are sent to the Agent Builder backend and rendered in a custom UI
-- Custom: If user provides a custom URL, summaries are sent there instead and default renderer is disabled
+- Default: Post-prompt summaries are sent to the Agent Builder backend and displayed in a built-in viewer
+- Custom: If user provides a custom URL, summaries are sent there instead and built-in viewer is disabled
 
 ### Example Usage
 ```python
-# Custom SWAIG webhook
-agent.set_web_hook_url("https://api.example.com/swaig")
+# Use default built-in viewer (no code needed)
 
-# Custom post-prompt URL (disables default renderer)
+# OR use custom post-prompt URL (disables built-in viewer)
 agent.set_post_prompt_url("https://api.example.com/summaries")
-
-# Add query parameters
-agent.add_swaig_query_params({
-    "api_key": "secret123",
-    "session_id": "abc456"
-})
 ```
 
 ## 7. Contexts & Steps Configuration Card (Advanced)
@@ -253,7 +255,7 @@ sales_context.add_step("determine_use_case") \
 3. **Global Data Configuration** - Useful for context persistence
 4. **Native Functions & Fillers** - Expands agent capabilities
 5. **Recording Configuration** - Important for compliance
-6. **Webhook Configuration** - Critical for integrations
+6. **Post-Prompt Summary Configuration** - For conversation tracking
 7. **Contexts & Steps** - Advanced feature for complex workflows
 
 ## Backend API Requirements
@@ -264,6 +266,64 @@ Each configuration card will need corresponding API endpoints to:
 - Provide lists of available options (native functions, etc.)
 - Generate proper SWML with these configurations
 
+## Admin Features
+
+### Skills Marketplace Management
+
+#### Description
+Admin interface to control which skills are advertised in the skills marketplace and manage the overall skills ecosystem. The system automatically detects new skills when the SDK is updated.
+
+#### How It Works
+1. Skills are dynamically loaded from the SignalWire SDK's skill registry
+2. When you update the SDK, new skills automatically appear
+3. Admin settings (visibility, featured status, etc.) are stored in the database
+4. The marketplace shows the intersection of: available SDK skills + admin visibility settings
+
+#### UI Implementation (Admin Panel)
+- Skills management table with columns:
+  - Skill name (from SDK)
+  - Description (from SDK, editable override)
+  - Category (admin-defined)
+  - Status (Visible/Hidden/Featured) - stored in DB
+  - Usage count (tracked in DB)
+  - Source (SDK/Custom)
+  - Last detected (when skill first appeared)
+- Actions per skill:
+  - Toggle visibility in marketplace
+  - Mark as featured
+  - Override description
+  - Set category
+  - View usage statistics
+- Bulk actions:
+  - Enable/disable multiple skills
+  - Export skill usage report
+  - Sync with SDK (detect new/removed skills)
+- SDK Sync indicator:
+  - Shows newly detected skills after SDK update
+  - Alerts for removed skills that were previously visible
+
+#### Database Schema
+```sql
+-- Skill metadata stored in database
+CREATE TABLE skill_settings (
+    skill_name VARCHAR(100) PRIMARY KEY,  -- Matches SDK skill name
+    is_visible BOOLEAN DEFAULT true,
+    is_featured BOOLEAN DEFAULT false,
+    category VARCHAR(50),
+    custom_description TEXT,  -- Overrides SDK description if set
+    usage_count INTEGER DEFAULT 0,
+    first_detected TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+#### API Endpoints
+- `GET /api/admin/skills` - List all skills (SDK + admin metadata)
+- `PUT /api/admin/skills/{skill_name}/settings` - Update admin settings
+- `POST /api/admin/skills/sync` - Force sync with SDK
+- `GET /api/admin/skills/stats` - Get usage statistics
+- `GET /api/skills` - Public endpoint (returns visible skills only)
+
 ## Notes
 
 - All configuration should be stored in the agent's config in the database
@@ -271,3 +331,4 @@ Each configuration card will need corresponding API endpoints to:
 - Consider adding import/export functionality for complex configurations
 - Add tooltips and examples for each configuration option
 - Validate regex patterns in pattern hints before saving
+- Admin features require appropriate authentication and authorization

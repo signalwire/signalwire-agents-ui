@@ -1,0 +1,6 @@
+export * from './HintsConfig'
+export * from './PronunciationsConfig'
+export * from './GlobalDataConfig'
+export * from './NativeFunctionsConfig'
+export * from './RecordingConfig'
+export * from './PostPromptConfig'

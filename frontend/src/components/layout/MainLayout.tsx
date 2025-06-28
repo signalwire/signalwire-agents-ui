@@ -45,6 +45,14 @@ export function MainLayout({ children }: MainLayoutProps) {
                   Agents
                 </Link>
                 <Link
+                  to="/skills"
+                  className={`text-sm font-medium transition-colors hover:text-nav-hover ${
+                    location.pathname.startsWith('/skills') ? 'text-nav-active' : 'text-muted-foreground'
+                  }`}
+                >
+                  Skills
+                </Link>
+                <Link
                   to="/admin"
                   className={`text-sm font-medium transition-colors hover:text-nav-hover ${
                     location.pathname.startsWith('/admin') ? 'text-nav-active' : 'text-muted-foreground'

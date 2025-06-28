@@ -13,6 +13,7 @@ export interface AgentConfig {
   skills: Array<{
     name: string
     params?: Record<string, any>
+    tool_name?: string
   }>
   params: Record<string, any>
   post_prompt?: string
@@ -20,6 +21,33 @@ export interface AgentConfig {
   hints: string[]
   basic_auth_user?: string
   basic_auth_password?: string
+  
+  // New configuration options
+  simple_hints?: string[]
+  pattern_hints?: Array<{
+    hint: string
+    pattern: string
+    replace: string
+    ignore_case: boolean
+  }>
+  pronunciations?: Array<{
+    replace: string
+    with: string
+    ignore_case: boolean
+  }>
+  global_data?: Record<string, any>
+  native_functions?: string[]
+  internal_fillers?: Record<string, Record<string, string[]>>
+  record_call?: boolean
+  record_format?: 'mp4' | 'wav'
+  record_stereo?: boolean
+  post_prompt_config?: {
+    mode: 'builtin' | 'custom'
+    custom_url?: string
+  }
+  contexts_steps_config?: {
+    contexts: any[]
+  }
 }
 
 export interface Agent {

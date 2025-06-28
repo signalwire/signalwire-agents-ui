@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import { ArrowLeft, Save, Plus, Shield, Globe, Settings } from 'lucide-react'
+import { ArrowLeft, Save, Plus, Shield, Globe, Settings, Hash, Mic, Database, Zap, Circle, FileText, Network } from 'lucide-react'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -20,6 +20,14 @@ import { BasicAuthConfig } from '@/components/agents/BasicAuthConfig'
 import { Badge } from '@/components/ui/badge'
 import { LANGUAGE_PRESETS, ELEVENLABS_VOICE_MAP, getRimeVoices } from '@/lib/languagePresets'
 import { api } from '@/lib/api'
+// Import new configuration components
+import { HintsConfig } from '@/components/agents/config/HintsConfig'
+import { PronunciationsConfig } from '@/components/agents/config/PronunciationsConfig'
+import { GlobalDataConfig } from '@/components/agents/config/GlobalDataConfig'
+import { NativeFunctionsConfig } from '@/components/agents/config/NativeFunctionsConfig'
+import { RecordingConfig } from '@/components/agents/config/RecordingConfig'
+import { PostPromptConfig } from '@/components/agents/config/PostPromptConfig'
+import { ContextsStepsConfig } from '@/components/agents/config/ContextsStepsConfig'
 
 interface AgentForm {
   name: string
@@ -41,11 +49,55 @@ export function AgentBuilderPage() {
   const [skills, setSkills] = useState<AgentConfig['skills']>([])
   const [params, setParams] = useState<AgentConfig['params']>({})
   const [basicAuth, setBasicAuth] = useState<{ user?: string; password?: string }>({})
+  
+  // New configuration states
+  const [hintsConfig, setHintsConfig] = useState<{ simple_hints: string[], pattern_hints: any[] }>({
+    simple_hints: [],
+    pattern_hints: []
+  })
+  const [pronunciations, setPronunciations] = useState<any[]>([])
+  const [globalData, setGlobalData] = useState<Record<string, any>>({})
+  const [nativeFunctionsConfig, setNativeFunctionsConfig] = useState<{
+    enabled_functions: string[],
+    internal_fillers: Record<string, Record<string, string[]>>
+  }>({
+    enabled_functions: [],
+    internal_fillers: {}
+  })
+  const [recordingConfig, setRecordingConfig] = useState<{
+    enabled: boolean,
+    format: 'mp4' | 'wav',
+    stereo: boolean
+  }>({
+    enabled: false,
+    format: 'mp4',
+    stereo: true
+  })
+  const [postPromptConfig, setPostPromptConfig] = useState<{
+    mode: 'builtin' | 'custom',
+    custom_url?: string
+  }>({
+    mode: 'builtin'
+  })
+  const [contextsStepsConfig, setContextsStepsConfig] = useState<{
+    contexts: any[]
+  }>({
+    contexts: []
+  })
   const [showPromptBuilder, setShowPromptBuilder] = useState(false)
   const [showSkillsSelector, setShowSkillsSelector] = useState(false)
   const [showParamsEditor, setShowParamsEditor] = useState(false)
   const [showBasicAuth, setShowBasicAuth] = useState(false)
   const [languageConfigs, setLanguageConfigs] = useState<any[]>([])
+  
+  // New configuration dialogs
+  const [showHintsConfig, setShowHintsConfig] = useState(false)
+  const [showPronunciationsConfig, setShowPronunciationsConfig] = useState(false)
+  const [showGlobalDataConfig, setShowGlobalDataConfig] = useState(false)
+  const [showNativeFunctionsConfig, setShowNativeFunctionsConfig] = useState(false)
+  const [showRecordingConfig, setShowRecordingConfig] = useState(false)
+  const [showPostPromptConfig, setShowPostPromptConfig] = useState(false)
+  const [showContextsStepsConfig, setShowContextsStepsConfig] = useState(false)
   const [selectedPresets, setSelectedPresets] = useState<string[]>([])
 
   const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<AgentForm>({
@@ -154,6 +206,45 @@ export function AgentBuilderPage() {
           password: agent.config.basic_auth_password,
         })
       }
+      
+      // Load new configurations
+      if (agent.config.simple_hints || agent.config.pattern_hints) {
+        setHintsConfig({
+          simple_hints: agent.config.simple_hints || [],
+          pattern_hints: agent.config.pattern_hints || []
+        })
+      }
+      if (agent.config.pronunciations) {
+        setPronunciations(agent.config.pronunciations)
+      }
+      if (agent.config.global_data) {
+        setGlobalData(agent.config.global_data)
+      }
+      if (agent.config.native_functions || agent.config.internal_fillers) {
+        setNativeFunctionsConfig({
+          enabled_functions: agent.config.native_functions || [],
+          internal_fillers: agent.config.internal_fillers || {}
+        })
+      }
+      if (agent.config.record_call !== undefined) {
+        setRecordingConfig({
+          enabled: agent.config.record_call,
+          format: agent.config.record_format || 'mp4',
+          stereo: agent.config.record_stereo !== false // default true
+        })
+      }
+      if (agent.config.post_prompt_config) {
+        setPostPromptConfig(agent.config.post_prompt_config)
+      }
+      if (agent.config.contexts_steps_config) {
+        setContextsStepsConfig(agent.config.contexts_steps_config)
+      } else if (agent.config.post_prompt_url) {
+        // Legacy support
+        setPostPromptConfig({
+          mode: 'custom',
+          custom_url: agent.config.post_prompt_url
+        })
+      }
     }
   }, [agent, languageConfigs, setValue])
 
@@ -205,11 +296,23 @@ export function AgentBuilderPage() {
         prompt_sections: promptSections,
         skills: skills,
         params: params,
-        hints: [],
+        hints: [], // Legacy, kept for compatibility
         ...(basicAuth.user && basicAuth.password && {
           basic_auth_user: basicAuth.user,
           basic_auth_password: basicAuth.password,
         }),
+        // New configurations
+        simple_hints: hintsConfig.simple_hints,
+        pattern_hints: hintsConfig.pattern_hints,
+        pronunciations: pronunciations,
+        global_data: globalData,
+        native_functions: nativeFunctionsConfig.enabled_functions,
+        internal_fillers: nativeFunctionsConfig.internal_fillers,
+        record_call: recordingConfig.enabled,
+        record_format: recordingConfig.format,
+        record_stereo: recordingConfig.stereo,
+        post_prompt_config: postPromptConfig,
+        contexts_steps_config: contextsStepsConfig,
       }
       return agentsApi.create({
         name: data.name,
@@ -269,11 +372,23 @@ export function AgentBuilderPage() {
         prompt_sections: promptSections,
         skills: skills,
         params: params,
-        hints: [],
+        hints: [], // Legacy, kept for compatibility
         ...(basicAuth.user && basicAuth.password && {
           basic_auth_user: basicAuth.user,
           basic_auth_password: basicAuth.password,
         }),
+        // New configurations
+        simple_hints: hintsConfig.simple_hints,
+        pattern_hints: hintsConfig.pattern_hints,
+        pronunciations: pronunciations,
+        global_data: globalData,
+        native_functions: nativeFunctionsConfig.enabled_functions,
+        internal_fillers: nativeFunctionsConfig.internal_fillers,
+        record_call: recordingConfig.enabled,
+        record_format: recordingConfig.format,
+        record_stereo: recordingConfig.stereo,
+        post_prompt_config: postPromptConfig,
+        contexts_steps_config: contextsStepsConfig,
       }
       return agentsApi.update(id!, {
         name: data.name,
@@ -706,6 +821,153 @@ export function AgentBuilderPage() {
               </p>
             </CardContent>
           </Card>
+
+          {/* Hints */}
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => setShowHintsConfig(true)}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between text-heading-card">
+                Hints
+                <Hash className="h-4 w-4" />
+              </CardTitle>
+              <CardDescription>
+                {hintsConfig.simple_hints.length + hintsConfig.pattern_hints.length} hints configured
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Click to help AI understand specific terms and patterns
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Pronunciations */}
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => setShowPronunciationsConfig(true)}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between text-heading-card">
+                Pronunciations
+                <Mic className="h-4 w-4" />
+              </CardTitle>
+              <CardDescription>
+                {pronunciations.length} custom pronunciations
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Click to configure how AI pronounces specific words
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Global Data */}
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => setShowGlobalDataConfig(true)}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between text-heading-card">
+                Global Data
+                <Database className="h-4 w-4" />
+              </CardTitle>
+              <CardDescription>
+                {Object.keys(globalData).length} data entries
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Click to set persistent data for the conversation
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Native Functions */}
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => setShowNativeFunctionsConfig(true)}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between text-heading-card">
+                Native Functions
+                <Zap className="h-4 w-4" />
+              </CardTitle>
+              <CardDescription>
+                {nativeFunctionsConfig.enabled_functions.length} functions enabled
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Click to enable built-in functions and configure fillers
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Recording */}
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => setShowRecordingConfig(true)}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between text-heading-card">
+                Recording
+                <Circle className={`h-4 w-4 ${recordingConfig.enabled ? 'text-red-500 fill-red-500' : ''}`} />
+              </CardTitle>
+              <CardDescription>
+                {recordingConfig.enabled ? `Recording enabled (${recordingConfig.format})` : 'Recording disabled'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Click to configure call recording settings
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Post-Prompt Summary */}
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => setShowPostPromptConfig(true)}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between text-heading-card">
+                Post-Prompt Summary
+                <FileText className="h-4 w-4" />
+              </CardTitle>
+              <CardDescription>
+                {postPromptConfig.mode === 'builtin' ? 'Using built-in viewer' : 'Custom URL configured'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Click to configure conversation summary handling
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Contexts & Steps */}
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => setShowContextsStepsConfig(true)}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between text-heading-card">
+                Contexts & Steps
+                <Network className="h-4 w-4" />
+              </CardTitle>
+              <CardDescription>
+                {contextsStepsConfig.contexts.length} contexts configured
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Click to build structured conversation flows
+              </p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Modals */}
@@ -735,6 +997,61 @@ export function AgentBuilderPage() {
           onClose={() => setShowBasicAuth(false)}
           config={basicAuth}
           onChange={setBasicAuth}
+        />
+
+        {/* New Configuration Dialogs */}
+        <HintsConfig
+          open={showHintsConfig}
+          onClose={() => setShowHintsConfig(false)}
+          config={hintsConfig}
+          onChange={setHintsConfig}
+        />
+
+        <PronunciationsConfig
+          open={showPronunciationsConfig}
+          onClose={() => setShowPronunciationsConfig(false)}
+          pronunciations={pronunciations}
+          onChange={setPronunciations}
+        />
+
+        <GlobalDataConfig
+          open={showGlobalDataConfig}
+          onClose={() => setShowGlobalDataConfig(false)}
+          globalData={globalData}
+          onChange={setGlobalData}
+        />
+
+        <NativeFunctionsConfig
+          open={showNativeFunctionsConfig}
+          onClose={() => setShowNativeFunctionsConfig(false)}
+          config={nativeFunctionsConfig}
+          onChange={setNativeFunctionsConfig}
+          languages={[
+            { code: 'en-US', name: 'English' },
+            // TODO: Get languages from agent config
+          ]}
+        />
+
+        <RecordingConfig
+          open={showRecordingConfig}
+          onClose={() => setShowRecordingConfig(false)}
+          config={recordingConfig}
+          onChange={setRecordingConfig}
+        />
+
+        <PostPromptConfig
+          open={showPostPromptConfig}
+          onClose={() => setShowPostPromptConfig(false)}
+          config={postPromptConfig}
+          onChange={setPostPromptConfig}
+        />
+
+        <ContextsStepsConfig
+          open={showContextsStepsConfig}
+          onClose={() => setShowContextsStepsConfig(false)}
+          config={contextsStepsConfig}
+          onChange={setContextsStepsConfig}
+          availableFunctions={skills.map(skill => skill.tool_name || skill.name)}
         />
       </form>
     </MainLayout>

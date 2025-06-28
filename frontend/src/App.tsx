@@ -5,6 +5,7 @@ import { LoginPage } from '@/pages/Login'
 import { AgentsPage } from '@/pages/Agents'
 import { AgentBuilderPage } from '@/pages/AgentBuilder'
 import { AdminPage } from '@/pages/Admin'
+import { SkillsMarketplacePage } from '@/pages/SkillsMarketplace'
 import { Toaster } from '@/components/ui/toaster'
 import { ThemeProvider } from '@/components/theme-provider'
 
@@ -56,6 +57,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <AdminPage />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/skills"
+            element={
+              <ProtectedRoute>
+                <SkillsMarketplacePage />
               </ProtectedRoute>
             }
           />

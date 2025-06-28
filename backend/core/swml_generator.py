@@ -14,9 +14,20 @@ logger = logging.getLogger(__name__)
 def generate_swml(agent_config: Dict[str, Any], agent_id: str) -> Dict[str, Any]:
     """Generate a SWML document from agent configuration using the SDK."""
     
-    # Create an ephemeral agent with the name
+    # Create an ephemeral agent with the name and recording settings
     agent_name = agent_config.get('name', 'Agent')
-    agent = AgentBase(name=agent_name)
+    
+    # Extract recording configuration
+    record_call = agent_config.get('record_call', False)
+    record_format = agent_config.get('record_format', 'mp4')
+    record_stereo = agent_config.get('record_stereo', True)
+    
+    agent = AgentBase(
+        name=agent_name,
+        record_call=record_call,
+        record_format=record_format,
+        record_stereo=record_stereo
+    )
     
     # Configure voice and language
     voice = agent_config.get('voice', 'nova')
@@ -67,9 +78,102 @@ def generate_swml(agent_config: Dict[str, Any], agent_id: str) -> Dict[str, Any]
             bullets=bullets if bullets else None
         )
     
-    # Add hints if provided
+    # Add hints if provided (legacy support)
     if hints := agent_config.get('hints'):
         agent.add_hints(hints)
+    
+    # Add new hint configurations
+    if simple_hints := agent_config.get('simple_hints'):
+        agent.add_hints(simple_hints)
+    
+    if pattern_hints := agent_config.get('pattern_hints'):
+        for pattern_hint in pattern_hints:
+            agent.add_pattern_hint(
+                hint=pattern_hint.get('hint', ''),
+                pattern=pattern_hint.get('pattern', ''),
+                replace=pattern_hint.get('replace', ''),
+                ignore_case=pattern_hint.get('ignore_case', False)
+            )
+    
+    # Add pronunciations
+    if pronunciations := agent_config.get('pronunciations'):
+        for pronunciation in pronunciations:
+            agent.add_pronunciation(
+                replace=pronunciation.get('replace', ''),
+                with_text=pronunciation.get('with', ''),
+                ignore_case=pronunciation.get('ignore_case', False)
+            )
+    
+    # Set global data
+    if global_data := agent_config.get('global_data'):
+        agent.set_global_data(global_data)
+    
+    # Enable native functions
+    if native_functions := agent_config.get('native_functions'):
+        agent.set_native_functions(native_functions)
+    
+    # Set internal fillers for native functions
+    if internal_fillers := agent_config.get('internal_fillers'):
+        agent.set_internal_fillers(internal_fillers)
+    
+    # Configure contexts and steps
+    if contexts_steps_config := agent_config.get('contexts_steps_config'):
+        if contexts := contexts_steps_config.get('contexts'):
+            # Initialize contexts
+            contexts_obj = agent.define_contexts()
+            
+            for context in contexts:
+                context_name = context.get('name', 'default')
+                context_obj = contexts_obj.add_context(context_name)
+                
+                # Set isolated if specified
+                if context.get('isolated', False):
+                    context_obj.set_isolated(True)
+                
+                # Add context sections
+                for section in context.get('sections', []):
+                    context_obj.add_section(
+                        title=section.get('title', ''),
+                        content=section.get('content', ''),
+                        bullets=section.get('bullets')
+                    )
+                
+                # Add enter fillers
+                if enter_fillers := context.get('enter_filler'):
+                    for lang, fillers in enter_fillers.items():
+                        context_obj.add_enter_filler(lang, fillers)
+                
+                # Add steps
+                for step in context.get('steps', []):
+                    step_name = step.get('name', '')
+                    step_obj = context_obj.add_step(step_name)
+                    
+                    # Add step sections
+                    for section in step.get('sections', []):
+                        step_obj.add_section(
+                            title=section.get('title', ''),
+                            content=section.get('content', ''),
+                            bullets=section.get('bullets')
+                        )
+                    
+                    # Set step criteria
+                    if criteria := step.get('step_criteria'):
+                        step_obj.set_step_criteria(criteria)
+                    
+                    # Set valid steps
+                    if valid_steps := step.get('valid_steps'):
+                        step_obj.set_valid_steps(valid_steps)
+                    
+                    # Set valid contexts
+                    if valid_contexts := step.get('valid_contexts'):
+                        step_obj.set_valid_contexts(valid_contexts)
+                    
+                    # Set function restrictions
+                    if restricted_functions := step.get('restricted_functions'):
+                        if 'none' in restricted_functions:
+                            step_obj.set_functions('none')
+                        else:
+                            step_obj.set_functions(restricted_functions)
     
     # Configure SWAIG webhook URL
     # The SDK will handle auth via basic auth in the SWML
@@ -126,10 +230,16 @@ def generate_swml(agent_config: Dict[str, Any], agent_id: str) -> Dict[str, Any]
     # Configure post-prompt if provided
     if post_prompt := agent_config.get('post_prompt'):
         agent.set_post_prompt(post_prompt)
-        if post_prompt_url := agent_config.get('post_prompt_url'):
+        
+        # Check new post_prompt_config format first
+        post_prompt_config = agent_config.get('post_prompt_config')
+        if post_prompt_config and post_prompt_config.get('mode') == 'custom' and post_prompt_config.get('custom_url'):
+            agent.set_post_prompt_url(post_prompt_config['custom_url'])
+        # Fall back to legacy post_prompt_url
+        elif post_prompt_url := agent_config.get('post_prompt_url'):
             agent.set_post_prompt_url(post_prompt_url)
+        # Default to built-in handler
         else:
-            # Use generic handler
             agent.set_post_prompt_url(f"https://{settings.hostname}:{settings.port}/api/post-prompt/{agent_id}")
     
     # Get the SWML document from the agent

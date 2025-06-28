@@ -9,7 +9,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from .core.config import settings
-from .api import auth, agents, swml, admin, swaig, skills
+from .api import auth, agents, swml, admin, swaig, skills, native_functions, skills_marketplace
 
 # Configure logging
 logging.basicConfig(
@@ -63,6 +63,8 @@ app.include_router(swml.router)  # Public endpoint, no /api prefix
 app.include_router(admin.router)
 app.include_router(swaig.router)  # SWAIG handler endpoint
 app.include_router(skills.router)  # Skills endpoint
+app.include_router(native_functions.router)  # Native functions endpoint
+app.include_router(skills_marketplace.router)  # Skills marketplace endpoint
 
 # Health check endpoint
 @app.get("/api/health")
