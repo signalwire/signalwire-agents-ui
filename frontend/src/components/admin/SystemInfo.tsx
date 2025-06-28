@@ -15,7 +15,7 @@ export function SystemInfo() {
 
   const { data: auditLogs } = useQuery({
     queryKey: ['audit-logs'],
-    queryFn: systemApi.getAuditLogs,
+    queryFn: () => systemApi.getAuditLogs(),
   })
 
   if (isLoading) {
@@ -34,7 +34,7 @@ export function SystemInfo() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Status</CardTitle>
+            <CardTitle className="text-sm font-medium text-heading-secondary">System Status</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -51,7 +51,7 @@ export function SystemInfo() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Database</CardTitle>
+            <CardTitle className="text-sm font-medium text-heading-secondary">Database</CardTitle>
             <Database className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -64,7 +64,7 @@ export function SystemInfo() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Memory Usage</CardTitle>
+            <CardTitle className="text-sm font-medium text-heading-secondary">Memory Usage</CardTitle>
             <HardDrive className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -77,7 +77,7 @@ export function SystemInfo() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">CPU Usage</CardTitle>
+            <CardTitle className="text-sm font-medium text-heading-secondary">CPU Usage</CardTitle>
             <Cpu className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -94,7 +94,7 @@ export function SystemInfo() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Version Information</CardTitle>
+              <CardTitle className="text-heading-secondary">Version Information</CardTitle>
               <CardDescription>
                 System and dependency versions
               </CardDescription>
@@ -133,13 +133,13 @@ export function SystemInfo() {
       {/* Recent Activity */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
+          <CardTitle className="text-heading-secondary">Recent Activity</CardTitle>
           <CardDescription>
             Last 10 audit log entries
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {auditLogs && auditLogs.length > 0 ? (
+          {auditLogs && Array.isArray(auditLogs) && auditLogs.length > 0 ? (
             <div className="space-y-2">
               {auditLogs.slice(0, 10).map((log: any, index: number) => (
                 <div key={index} className="flex items-center justify-between text-sm">

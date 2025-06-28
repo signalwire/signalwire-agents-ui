@@ -1,0 +1,822 @@
+[
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/swml_transfer/skill.py",
+    "skill_name": "swml_transfer",
+    "skill_description": "Transfer calls between agents based on pattern matching",
+    "parameters": {
+      "default_post_process": {
+        "name": "default_post_process",
+        "required": false,
+        "type": "unknown",
+        "default": false
+      },
+      "description": {
+        "name": "description",
+        "required": false,
+        "type": "unknown",
+        "default": "Transfer call based on pattern matching"
+      },
+      "required_fields": {
+        "name": "required_fields",
+        "required": false,
+        "type": "unknown",
+        "default": {}
+      },
+      "tool_name": {
+        "name": "tool_name",
+        "required": false,
+        "type": "unknown",
+        "default": "transfer_call"
+      },
+      "parameter_name": {
+        "name": "parameter_name",
+        "required": false,
+        "type": "unknown",
+        "default": "transfer_type"
+      },
+      "default_message": {
+        "name": "default_message",
+        "required": false,
+        "type": "unknown",
+        "default": "Please specify a valid transfer type."
+      },
+      "transfers": {
+        "name": "transfers",
+        "required": true,
+        "type": "unknown",
+        "default": {}
+      },
+      "parameter_description": {
+        "name": "parameter_description",
+        "required": false,
+        "type": "unknown",
+        "default": "The type of transfer to perform"
+      }
+    },
+    "required_params": [
+      "transfers"
+    ],
+    "optional_params": {
+      "tool_name": "transfer_call",
+      "transfers": {},
+      "description": "Transfer call based on pattern matching",
+      "parameter_name": "transfer_type",
+      "parameter_description": "The type of transfer to perform",
+      "default_message": "Please specify a valid transfer type.",
+      "default_post_process": false,
+      "required_fields": {}
+    },
+    "class_name": "SWMLTransferSkill"
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/datasphere/skill.py",
+    "skill_name": "datasphere",
+    "skill_description": "Search knowledge using SignalWire DataSphere RAG stack",
+    "parameters": {
+      "distance": {
+        "name": "distance",
+        "required": false,
+        "type": "unknown",
+        "default": 3.0
+      },
+      "max_synonyms": {
+        "name": "max_synonyms",
+        "required": true,
+        "type": "unknown"
+      },
+      "space_name": {
+        "name": "space_name",
+        "required": true,
+        "type": "unknown"
+      },
+      "count": {
+        "name": "count",
+        "required": false,
+        "type": "unknown",
+        "default": 1
+      },
+      "pos_to_expand": {
+        "name": "pos_to_expand",
+        "required": true,
+        "type": "unknown"
+      },
+      "document_id": {
+        "name": "document_id",
+        "required": true,
+        "type": "unknown"
+      },
+      "token": {
+        "name": "token",
+        "required": true,
+        "type": "unknown"
+      },
+      "language": {
+        "name": "language",
+        "required": true,
+        "type": "unknown"
+      },
+      "project_id": {
+        "name": "project_id",
+        "required": true,
+        "type": "unknown"
+      },
+      "no_results_message": {
+        "name": "no_results_message",
+        "required": false,
+        "type": "unknown",
+        "default": "I couldn't find any relevant information for '{query}' in the knowledge base. Try rephrasing your question or asking about a different topic."
+      },
+      "tool_name": {
+        "name": "tool_name",
+        "required": false,
+        "type": "unknown",
+        "default": "search_knowledge"
+      },
+      "tags": {
+        "name": "tags",
+        "required": true,
+        "type": "unknown"
+      }
+    },
+    "required_params": [
+      "max_synonyms",
+      "space_name",
+      "pos_to_expand",
+      "document_id",
+      "token",
+      "language",
+      "project_id",
+      "tags"
+    ],
+    "optional_params": {
+      "tool_name": "search_knowledge",
+      "count": 1,
+      "distance": 3.0,
+      "no_results_message": "I couldn't find any relevant information for '{query}' in the knowledge base. Try rephrasing your question or asking about a different topic."
+    },
+    "class_name": "DataSphereSkill"
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/datasphere_serverless/skill.py",
+    "skill_name": "datasphere_serverless",
+    "skill_description": "Search knowledge using SignalWire DataSphere with serverless DataMap execution",
+    "parameters": {
+      "distance": {
+        "name": "distance",
+        "required": false,
+        "type": "unknown",
+        "default": 3.0
+      },
+      "max_synonyms": {
+        "name": "max_synonyms",
+        "required": true,
+        "type": "unknown"
+      },
+      "space_name": {
+        "name": "space_name",
+        "required": true,
+        "type": "unknown"
+      },
+      "count": {
+        "name": "count",
+        "required": false,
+        "type": "unknown",
+        "default": 1
+      },
+      "pos_to_expand": {
+        "name": "pos_to_expand",
+        "required": true,
+        "type": "unknown"
+      },
+      "document_id": {
+        "name": "document_id",
+        "required": true,
+        "type": "unknown"
+      },
+      "token": {
+        "name": "token",
+        "required": true,
+        "type": "unknown"
+      },
+      "language": {
+        "name": "language",
+        "required": true,
+        "type": "unknown"
+      },
+      "project_id": {
+        "name": "project_id",
+        "required": true,
+        "type": "unknown"
+      },
+      "no_results_message": {
+        "name": "no_results_message",
+        "required": false,
+        "type": "unknown",
+        "default": "I couldn't find any relevant information for '{query}' in the knowledge base. Try rephrasing your question or asking about a different topic."
+      },
+      "tool_name": {
+        "name": "tool_name",
+        "required": false,
+        "type": "unknown",
+        "default": "search_knowledge"
+      },
+      "tags": {
+        "name": "tags",
+        "required": true,
+        "type": "unknown"
+      }
+    },
+    "required_params": [
+      "max_synonyms",
+      "space_name",
+      "pos_to_expand",
+      "document_id",
+      "token",
+      "language",
+      "project_id",
+      "tags"
+    ],
+    "optional_params": {
+      "tool_name": "search_knowledge",
+      "count": 1,
+      "distance": 3.0,
+      "no_results_message": "I couldn't find any relevant information for '{query}' in the knowledge base. Try rephrasing your question or asking about a different topic."
+    },
+    "class_name": "DataSphereServerlessSkill"
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/web_search/skill.py",
+    "skill_name": "web_search",
+    "skill_description": "Search the web for information using Google Custom Search API",
+    "parameters": {
+      "delay": {
+        "name": "delay",
+        "required": false,
+        "type": "unknown",
+        "default": 0
+      },
+      "api_key": {
+        "name": "api_key",
+        "required": true,
+        "type": "unknown"
+      },
+      "search_engine_id": {
+        "name": "search_engine_id",
+        "required": true,
+        "type": "unknown",
+        "default": "default"
+      },
+      "num_results": {
+        "name": "num_results",
+        "required": false,
+        "type": "unknown",
+        "default": 1
+      },
+      "no_results_message": {
+        "name": "no_results_message",
+        "required": false,
+        "type": "unknown",
+        "default": "I couldn't find any results for '{query}'. This might be due to a very specific query or temporary issues. Try rephrasing your search or asking about a different topic."
+      },
+      "tool_name": {
+        "name": "tool_name",
+        "required": false,
+        "type": "unknown",
+        "default": "web_search"
+      },
+      "max_content_length": {
+        "name": "max_content_length",
+        "required": false,
+        "type": "unknown",
+        "default": 2000
+      }
+    },
+    "required_params": [
+      "search_engine_id",
+      "api_key"
+    ],
+    "optional_params": {
+      "search_engine_id": "default",
+      "tool_name": "web_search",
+      "num_results": 1,
+      "delay": 0,
+      "max_content_length": 2000,
+      "no_results_message": "I couldn't find any results for '{query}'. This might be due to a very specific query or temporary issues. Try rephrasing your search or asking about a different topic."
+    },
+    "class_name": "WebSearchSkill"
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/mcp_gateway/skill.py",
+    "skill_name": "mcp_gateway",
+    "skill_description": "Bridge MCP servers with SWAIG functions",
+    "parameters": {
+      "tool_prefix": {
+        "name": "tool_prefix",
+        "required": false,
+        "type": "unknown",
+        "default": "mcp_"
+      },
+      "retry_attempts": {
+        "name": "retry_attempts",
+        "required": false,
+        "type": "unknown",
+        "default": 3
+      },
+      "verify_ssl": {
+        "name": "verify_ssl",
+        "required": false,
+        "type": "unknown",
+        "default": true
+      },
+      "auth_password": {
+        "name": "auth_password",
+        "required": true,
+        "type": "unknown"
+      },
+      "auth_token": {
+        "name": "auth_token",
+        "required": true,
+        "type": "unknown"
+      },
+      "services": {
+        "name": "services",
+        "required": false,
+        "type": "unknown",
+        "default": []
+      },
+      "auth_user": {
+        "name": "auth_user",
+        "required": true,
+        "type": "unknown"
+      },
+      "session_timeout": {
+        "name": "session_timeout",
+        "required": false,
+        "type": "unknown",
+        "default": 300
+      },
+      "request_timeout": {
+        "name": "request_timeout",
+        "required": false,
+        "type": "unknown",
+        "default": 30
+      },
+      "gateway_url": {
+        "name": "gateway_url",
+        "required": true,
+        "type": "unknown"
+      }
+    },
+    "required_params": [
+      "auth_token",
+      "gateway_url",
+      "auth_password",
+      "auth_user"
+    ],
+    "optional_params": {
+      "services": [],
+      "session_timeout": 300,
+      "tool_prefix": "mcp_",
+      "retry_attempts": 3,
+      "request_timeout": 30,
+      "verify_ssl": true
+    },
+    "class_name": "MCPGatewaySkill"
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/spider/skill.py",
+    "skill_name": "spider",
+    "skill_description": "Fast web scraping and crawling capabilities",
+    "parameters": {
+      "max_pages": {
+        "name": "max_pages",
+        "required": false,
+        "type": "unknown",
+        "default": 1
+      },
+      "delay": {
+        "name": "delay",
+        "required": false,
+        "type": "unknown",
+        "default": 0.1
+      },
+      "follow_robots_txt": {
+        "name": "follow_robots_txt",
+        "required": false,
+        "type": "unknown",
+        "default": false
+      },
+      "headers": {
+        "name": "headers",
+        "required": false,
+        "type": "unknown",
+        "default": {}
+      },
+      "max_depth": {
+        "name": "max_depth",
+        "required": false,
+        "type": "unknown",
+        "default": 0
+      },
+      "max_text_length": {
+        "name": "max_text_length",
+        "required": false,
+        "type": "unknown",
+        "default": 3000
+      },
+      "cache_enabled": {
+        "name": "cache_enabled",
+        "required": false,
+        "type": "unknown",
+        "default": true
+      },
+      "selectors": {
+        "name": "selectors",
+        "required": false,
+        "type": "unknown",
+        "default": {}
+      },
+      "tool_name": {
+        "name": "tool_name",
+        "required": true,
+        "type": "unknown",
+        "default": ""
+      },
+      "timeout": {
+        "name": "timeout",
+        "required": false,
+        "type": "unknown",
+        "default": 5
+      },
+      "user_agent": {
+        "name": "user_agent",
+        "required": false,
+        "type": "unknown",
+        "default": "Spider/1.0 (SignalWire AI Agent)"
+      },
+      "follow_patterns": {
+        "name": "follow_patterns",
+        "required": false,
+        "type": "unknown",
+        "default": []
+      },
+      "concurrent_requests": {
+        "name": "concurrent_requests",
+        "required": false,
+        "type": "unknown",
+        "default": 5
+      },
+      "clean_text": {
+        "name": "clean_text",
+        "required": false,
+        "type": "unknown",
+        "default": true
+      },
+      "extract_type": {
+        "name": "extract_type",
+        "required": false,
+        "type": "unknown",
+        "default": "fast_text"
+      }
+    },
+    "required_params": [
+      "tool_name"
+    ],
+    "optional_params": {
+      "delay": 0.1,
+      "concurrent_requests": 5,
+      "timeout": 5,
+      "max_pages": 1,
+      "max_depth": 0,
+      "extract_type": "fast_text",
+      "max_text_length": 3000,
+      "clean_text": true,
+      "cache_enabled": true,
+      "follow_robots_txt": false,
+      "user_agent": "Spider/1.0 (SignalWire AI Agent)",
+      "headers": {},
+      "tool_name": "",
+      "selectors": {},
+      "follow_patterns": []
+    },
+    "class_name": "SpiderSkill"
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/joke/skill.py",
+    "skill_name": "joke",
+    "skill_description": "Tell jokes using the API Ninjas joke API",
+    "parameters": {
+      "tool_name": {
+        "name": "tool_name",
+        "required": false,
+        "type": "unknown",
+        "default": "get_joke"
+      },
+      "api_key": {
+        "name": "api_key",
+        "required": true,
+        "type": "unknown"
+      }
+    },
+    "required_params": [
+      "api_key"
+    ],
+    "optional_params": {
+      "tool_name": "get_joke"
+    },
+    "class_name": "JokeSkill"
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/wikipedia_search/skill.py",
+    "skill_name": "wikipedia_search",
+    "skill_description": "Search Wikipedia for information about a topic and get article summaries",
+    "parameters": {
+      "num_results": {
+        "name": "num_results",
+        "required": false,
+        "type": "unknown",
+        "default": 1
+      },
+      "no_results_message": {
+        "name": "no_results_message",
+        "required": true,
+        "type": "unknown"
+      }
+    },
+    "required_params": [
+      "no_results_message"
+    ],
+    "optional_params": {
+      "num_results": 1
+    },
+    "class_name": "WikipediaSearchSkill"
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/weather_api/skill.py",
+    "skill_name": "weather_api",
+    "skill_description": "Get current weather information from WeatherAPI.com",
+    "parameters": {
+      "temperature_unit": {
+        "name": "temperature_unit",
+        "required": false,
+        "type": "unknown",
+        "default": "fahrenheit"
+      },
+      "tool_name": {
+        "name": "tool_name",
+        "required": false,
+        "type": "unknown",
+        "default": "get_weather"
+      },
+      "api_key": {
+        "name": "api_key",
+        "required": true,
+        "type": "unknown"
+      }
+    },
+    "required_params": [
+      "api_key"
+    ],
+    "optional_params": {
+      "tool_name": "get_weather",
+      "temperature_unit": "fahrenheit"
+    },
+    "class_name": "WeatherApiSkill"
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/math/skill.py",
+    "skill_name": "math",
+    "skill_description": "Perform basic mathematical calculations",
+    "parameters": {},
+    "required_params": [],
+    "optional_params": {},
+    "class_name": "MathSkill"
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/api_ninjas_trivia/skill.py",
+    "skill_name": "api_ninjas_trivia",
+    "skill_description": "Get trivia questions from API Ninjas",
+    "parameters": {
+      "categories": {
+        "name": "categories",
+        "required": true,
+        "type": "unknown"
+      },
+      "tool_name": {
+        "name": "tool_name",
+        "required": false,
+        "type": "unknown",
+        "default": "get_trivia"
+      },
+      "api_key": {
+        "name": "api_key",
+        "required": true,
+        "type": "unknown"
+      }
+    },
+    "required_params": [
+      "categories",
+      "api_key"
+    ],
+    "optional_params": {
+      "tool_name": "get_trivia"
+    },
+    "class_name": "ApiNinjasTriviaSkill"
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/datetime/skill.py",
+    "skill_name": "datetime",
+    "skill_description": "Get current date, time, and timezone information",
+    "parameters": {},
+    "required_params": [],
+    "optional_params": {},
+    "class_name": "DateTimeSkill"
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/play_background_file/skill.py",
+    "skill_name": "play_background_file",
+    "skill_description": "Control background file playback",
+    "parameters": {
+      "tool_name": {
+        "name": "tool_name",
+        "required": false,
+        "type": "unknown",
+        "default": "play_background_file"
+      },
+      "files": {
+        "name": "files",
+        "required": false,
+        "type": "unknown",
+        "default": []
+      }
+    },
+    "required_params": [],
+    "optional_params": {
+      "tool_name": "play_background_file",
+      "files": []
+    },
+    "class_name": "PlayBackgroundFileSkill"
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/native_vector_search/skill.py",
+    "skill_name": "native_vector_search",
+    "skill_description": "Search document indexes using vector similarity and keyword search (local or remote)",
+    "parameters": {
+      "file_types": {
+        "name": "file_types",
+        "required": false,
+        "type": "unknown",
+        "default": []
+      },
+      "source_dir": {
+        "name": "source_dir",
+        "required": true,
+        "type": "unknown"
+      },
+      "description": {
+        "name": "description",
+        "required": false,
+        "type": "unknown",
+        "default": "Search the local knowledge base for information"
+      },
+      "swaig_fields": {
+        "name": "swaig_fields",
+        "required": false,
+        "type": "unknown",
+        "default": {}
+      },
+      "nlp_backend": {
+        "name": "nlp_backend",
+        "required": true,
+        "type": "unknown"
+      },
+      "exclude_patterns": {
+        "name": "exclude_patterns",
+        "required": true,
+        "type": "unknown"
+      },
+      "index_nlp_backend": {
+        "name": "index_nlp_backend",
+        "required": false,
+        "type": "unknown",
+        "default": "nltk"
+      },
+      "response_postfix": {
+        "name": "response_postfix",
+        "required": false,
+        "type": "unknown",
+        "default": ""
+      },
+      "global_tags": {
+        "name": "global_tags",
+        "required": true,
+        "type": "unknown"
+      },
+      "index_name": {
+        "name": "index_name",
+        "required": false,
+        "type": "unknown",
+        "default": "default"
+      },
+      "tool_name": {
+        "name": "tool_name",
+        "required": false,
+        "type": "unknown",
+        "default": "search_knowledge"
+      },
+      "tags": {
+        "name": "tags",
+        "required": false,
+        "type": "unknown",
+        "default": []
+      },
+      "distance_threshold": {
+        "name": "distance_threshold",
+        "required": false,
+        "type": "unknown",
+        "default": 0.0
+      },
+      "build_index": {
+        "name": "build_index",
+        "required": false,
+        "type": "unknown",
+        "default": false
+      },
+      "query_nlp_backend": {
+        "name": "query_nlp_backend",
+        "required": false,
+        "type": "unknown",
+        "default": "nltk"
+      },
+      "response_prefix": {
+        "name": "response_prefix",
+        "required": false,
+        "type": "unknown",
+        "default": ""
+      },
+      "count": {
+        "name": "count",
+        "required": false,
+        "type": "unknown",
+        "default": 5
+      },
+      "hints": {
+        "name": "hints",
+        "required": false,
+        "type": "unknown",
+        "default": []
+      },
+      "no_results_message": {
+        "name": "no_results_message",
+        "required": false,
+        "type": "unknown",
+        "default": "No information found for '{query}'"
+      },
+      "verbose": {
+        "name": "verbose",
+        "required": false,
+        "type": "unknown",
+        "default": false
+      },
+      "index_file": {
+        "name": "index_file",
+        "required": true,
+        "type": "unknown",
+        "default": "default"
+      },
+      "remote_url": {
+        "name": "remote_url",
+        "required": true,
+        "type": "unknown"
+      }
+    },
+    "required_params": [
+      "source_dir",
+      "nlp_backend",
+      "exclude_patterns",
+      "remote_url",
+      "global_tags",
+      "index_file"
+    ],
+    "optional_params": {
+      "tool_name": "search_knowledge",
+      "index_file": "default",
+      "build_index": false,
+      "count": 5,
+      "distance_threshold": 0.0,
+      "tags": [],
+      "no_results_message": "No information found for '{query}'",
+      "response_prefix": "",
+      "response_postfix": "",
+      "index_name": "default",
+      "swaig_fields": {},
+      "index_nlp_backend": "nltk",
+      "query_nlp_backend": "nltk",
+      "verbose": false,
+      "file_types": [],
+      "description": "Search the local knowledge base for information",
+      "hints": []
+    },
+    "class_name": "NativeVectorSearchSkill"
+  }
+]

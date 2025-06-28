@@ -2,6 +2,7 @@ import { apiClient } from './client'
 
 export interface LoginRequest {
   token: string
+  remember_me?: boolean
 }
 
 export interface LoginResponse {

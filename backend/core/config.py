@@ -79,5 +79,6 @@ def get_swml_url(agent_id: str) -> str:
 
 
 def get_swaig_handler_url() -> str:
-    """Get the universal SWAIG handler URL."""
-    return "https://swaig.signalwire.com/universal"
+    """Get the SWAIG handler URL."""
+    # Use our own SWAIG handler endpoint
+    return f"https://{settings.hostname}:{settings.port}/api/swaig/function"

@@ -2,17 +2,25 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta
 import jwt
+import json
 import secrets
 import psutil
 import os
 from typing import List, Dict, Any, Optional
+from pydantic import BaseModel
 
 from ..core.database import get_db
 from ..auth import get_current_user
 from ..models import User, Setting, Token, AuditLog
 from ..core.config import settings as app_settings
+from ..core.audit import create_audit_log
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+class SettingUpdate(BaseModel):
+    value: Any
+
 
 # Settings endpoints
 @router.get("/settings")
@@ -24,11 +32,15 @@ async def get_settings(
     settings_dict = {}
     
     # Get all settings from database
+    from sqlalchemy import text
     result = await db.execute(
-        "SELECT key, value FROM settings"
+        text("SELECT key, value FROM settings")
     )
     for row in result:
-        settings_dict[row.key] = row.value
+        try:
+            settings_dict[row.key] = json.loads(row.value)
+        except:
+            settings_dict[row.key] = row.value
     
     # Add default values if not set
     defaults = {
@@ -51,38 +63,42 @@ async def get_settings(
 @router.put("/settings/{key}")
 async def update_setting(
     key: str,
-    value: Any,
+    setting_update: SettingUpdate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Update a specific setting"""
+    value = setting_update.value
     # Check if setting exists
+    from sqlalchemy import text
     result = await db.execute(
-        "SELECT id FROM settings WHERE key = $1",
-        key
+        text("SELECT id FROM settings WHERE key = :key"),
+        {"key": key}
     )
     existing = result.fetchone()
     
     if existing:
         # Update existing setting
         await db.execute(
-            "UPDATE settings SET value = $2, updated_at = $3 WHERE key = $1",
-            key, value, datetime.utcnow()
+            text("UPDATE settings SET value = :value, updated_at = :updated_at WHERE key = :key"),
+            {"key": key, "value": json.dumps(value), "updated_at": datetime.utcnow()}
         )
     else:
         # Create new setting
         await db.execute(
-            "INSERT INTO settings (key, value, created_at, updated_at) VALUES ($1, $2, $3, $4)",
-            key, value, datetime.utcnow(), datetime.utcnow()
+            text("INSERT INTO settings (key, value, created_at, updated_at) VALUES (:key, :value, :created_at, :updated_at)"),
+            {"key": key, "value": json.dumps(value), "created_at": datetime.utcnow(), "updated_at": datetime.utcnow()}
         )
     
     await db.commit()
     
     # Log the change
     await create_audit_log(
-        db, current_user.id, "settings_update",
-        f"Updated setting: {key}",
-        {"key": key, "value": value}
+        db,
+        user_id=current_user.id,
+        action="settings_update",
+        description=f"Updated setting: {key}",
+        metadata={"key": key, "value": value}
     )
     
     return {"message": "Setting updated"}
@@ -176,7 +192,7 @@ async def create_token(
         "iat": datetime.utcnow()
     }
     
-    token = jwt.encode(payload, app_settings.JWT_SECRET_KEY, algorithm="HS256")
+    token = jwt.encode(payload, app_settings.jwt_secret, algorithm="HS256")
     
     # Save to database
     result = await db.execute(
@@ -191,9 +207,11 @@ async def create_token(
     
     # Log the creation
     await create_audit_log(
-        db, current_user.id, "token_create",
-        f"Created token: {name}",
-        {"token_id": token_id, "name": name, "expiry_days": expiry_days}
+        db,
+        user_id=current_user.id,
+        action="token_create",
+        description=f"Created token: {name}",
+        metadata={"token_id": token_id, "name": name, "expiry_days": expiry_days}
     )
     
     return {
@@ -232,9 +250,11 @@ async def revoke_token(
     
     # Log the revocation
     await create_audit_log(
-        db, current_user.id, "token_revoke",
-        f"Revoked token: {token.name}",
-        {"token_id": token_id, "name": token.name}
+        db,
+        user_id=current_user.id,
+        action="token_revoke",
+        description=f"Revoked token: {token.name}",
+        metadata={"token_id": token_id, "name": token.name}
     )
     
     return {"message": "Token revoked"}
@@ -317,20 +337,86 @@ async def get_audit_logs(
     
     return logs
 
-# Helper function to create audit logs
-async def create_audit_log(
-    db: AsyncSession,
-    user_id: str,
-    action: str,
-    description: str,
-    metadata: Dict[str, Any] = None
+# Language configuration endpoints
+@router.get("/settings/language-configs")
+async def get_language_configs(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ):
-    """Create an audit log entry"""
-    await db.execute(
-        """
-        INSERT INTO audit_logs (user_id, action, description, metadata, timestamp)
-        VALUES ($1, $2, $3, $4, $5)
-        """,
-        user_id, action, description, metadata or {}, datetime.utcnow()
+    """Get language configuration settings"""
+    from sqlalchemy import text
+    
+    # Get language configs from settings
+    result = await db.execute(
+        text("SELECT value FROM settings WHERE key = 'language_configs'")
     )
+    row = result.fetchone()
+    configs = json.loads(row.value) if row else []
+    
+    # Get selected presets
+    result = await db.execute(
+        text("SELECT value FROM settings WHERE key = 'selected_language_presets'")
+    )
+    row = result.fetchone()
+    selected_presets = json.loads(row.value) if row else []
+    
+    return {
+        "configs": configs,
+        "selectedPresets": selected_presets
+    }
+
+@router.post("/settings/language-configs")
+async def save_language_configs(
+    data: Dict[str, Any],
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Save language configuration settings"""
+    from sqlalchemy import text
+    
+    configs = data.get("configs", [])
+    selected_presets = data.get("selectedPresets", [])
+    
+    # Save configs
+    await db.execute(
+        text("""
+            INSERT INTO settings (key, value, created_at, updated_at) 
+            VALUES ('language_configs', :value, :created_at, :updated_at)
+            ON CONFLICT (key) DO UPDATE 
+            SET value = :value, updated_at = :updated_at
+        """),
+        {
+            "value": json.dumps(configs),
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+    )
+    
+    # Save selected presets
+    await db.execute(
+        text("""
+            INSERT INTO settings (key, value, created_at, updated_at) 
+            VALUES ('selected_language_presets', :value, :created_at, :updated_at)
+            ON CONFLICT (key) DO UPDATE 
+            SET value = :value, updated_at = :updated_at
+        """),
+        {
+            "value": json.dumps(selected_presets),
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+    )
+    
     await db.commit()
+    
+    # Log the change
+    await create_audit_log(
+        db,
+        user_id=current_user.id,
+        action="language_config_update",
+        description="Updated language configuration",
+        metadata={"configs_count": len(configs), "presets_count": len(selected_presets)}
+    )
+    
+    return {"message": "Language configuration saved"}
+

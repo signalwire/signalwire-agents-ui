@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { agentsApi } from '@/api/agents'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { toast } from '@/components/ui/use-toast'
+import { getElevenLabsVoiceName } from '@/lib/languagePresets'
 
 export function AgentsPage() {
   const queryClient = useQueryClient()
@@ -46,7 +47,7 @@ export function AgentsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Your Agents</h1>
+            <h1 className="text-2xl font-bold text-heading-primary">Your Agents</h1>
             <p className="text-muted-foreground">
               Create and manage your SignalWire AI agents
             </p>
@@ -81,7 +82,7 @@ export function AgentsPage() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
-                      <CardTitle className="line-clamp-1">{agent.name}</CardTitle>
+                      <CardTitle className="line-clamp-1 text-heading-card">{agent.name}</CardTitle>
                       <CardDescription className="line-clamp-2">
                         {agent.description || 'No description'}
                       </CardDescription>
@@ -93,7 +94,11 @@ export function AgentsPage() {
                   <div className="space-y-2 text-sm">
                     <div>
                       <span className="text-muted-foreground">Voice:</span>{' '}
-                      <span className="font-medium">{agent.config.voice}</span>
+                      <span className="font-medium">
+                        {agent.config.engine === 'elevenlabs'
+                          ? getElevenLabsVoiceName(agent.config.voice)
+                          : agent.config.voice}
+                      </span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Skills:</span>{' '}

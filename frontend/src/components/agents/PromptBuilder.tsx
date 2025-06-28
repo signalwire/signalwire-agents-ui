@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Trash2, GripVertical } from 'lucide-react'
+import { Trash2, GripVertical } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,7 +22,6 @@ interface PromptBuilderProps {
 
 export function PromptBuilder({ open, onClose, sections, onChange }: PromptBuilderProps) {
   const [localSections, setLocalSections] = useState<PromptSection[]>(sections)
-  const [editingBullets, setEditingBullets] = useState<Record<number, string>>({})
 
   const commonSectionTemplates = [
     { title: 'Role', body: 'You are a helpful assistant...' },
@@ -65,12 +64,6 @@ export function PromptBuilder({ open, onClose, sections, onChange }: PromptBuild
     updateSection(sectionIndex, { bullets })
   }
 
-  const moveSection = (fromIndex: number, toIndex: number) => {
-    const updated = [...localSections]
-    const [moved] = updated.splice(fromIndex, 1)
-    updated.splice(toIndex, 0, moved)
-    setLocalSections(updated)
-  }
 
   const handleSave = () => {
     onChange(localSections)

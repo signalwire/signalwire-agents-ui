@@ -8,8 +8,9 @@ from uuid import UUID
 from datetime import datetime
 
 from ..core.database import get_db
-from ..core.models import Agent, Token
-from ..core.security import verify_token, create_audit_log, get_request_metadata
+from ..models import Agent, Token
+from ..core.security import verify_jwt_token
+from ..core.audit import create_audit_log, get_request_metadata
 from ..core.config import get_swml_url
 from ..core.swml_generator import generate_swml
 from slowapi import Limiter
@@ -22,7 +23,9 @@ limiter = Limiter(key_func=get_remote_address)
 class AgentConfig(BaseModel):
     """Agent configuration schema."""
     voice: str = Field(default="nova", description="Voice to use")
+    engine: str = Field(default="elevenlabs", description="TTS engine")
     language: str = Field(default="en-US", description="Language code")
+    model: Optional[str] = Field(None, description="Model for certain engines")
     prompt_sections: List[Dict[str, Any]] = Field(default_factory=list)
     skills: List[Dict[str, Any]] = Field(default_factory=list)
     params: Dict[str, Any] = Field(default_factory=dict)
@@ -73,7 +76,7 @@ def format_swml_url(agent_id: str, config: Dict[str, Any]) -> str:
 async def list_agents(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    token: Token = Depends(verify_token)
+    auth_data: Dict[str, Any] = Depends(verify_jwt_token)
 ) -> List[AgentResponse]:
     """List all agents."""
     result = await db.execute(select(Agent).order_by(Agent.created_at.desc()))
@@ -98,7 +101,7 @@ async def create_agent(
     request: Request,
     agent_data: AgentCreate,
     db: AsyncSession = Depends(get_db),
-    token: Token = Depends(verify_token)
+    auth_data: Dict[str, Any] = Depends(verify_jwt_token)
 ) -> AgentResponse:
     """Create a new agent."""
     # Create agent
@@ -111,14 +114,18 @@ async def create_agent(
     await db.flush()  # Get the ID
     
     # Create audit log
+    token = auth_data["token"]
     await create_audit_log(
         db,
-        action="CREATE",
-        entity_type="agent",
-        entity_id=str(agent.id),
-        changes=agent_data.model_dump(),
-        metadata=get_request_metadata(request),
-        auth_token=token.token
+        user_id=str(token.id),
+        action="AGENT_CREATE",
+        description=f"Created agent: {agent.name}",
+        metadata={
+            **get_request_metadata(request),
+            "agent_id": str(agent.id),
+            "agent_name": agent.name,
+            "config": agent_data.model_dump()
+        }
     )
     
     await db.commit()
@@ -140,7 +147,7 @@ async def get_agent(
     agent_id: UUID,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    token: Token = Depends(verify_token)
+    auth_data: Dict[str, Any] = Depends(verify_jwt_token)
 ) -> AgentResponse:
     """Get a specific agent."""
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
@@ -166,7 +173,7 @@ async def update_agent(
     agent_data: AgentUpdate,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    token: Token = Depends(verify_token)
+    auth_data: Dict[str, Any] = Depends(verify_jwt_token)
 ) -> AgentResponse:
     """Update an agent."""
     # Get existing agent
@@ -194,14 +201,17 @@ async def update_agent(
     
     # Create audit log
     if changes:
+        token = auth_data["token"]
         await create_audit_log(
             db,
-            action="UPDATE",
-            entity_type="agent",
-            entity_id=str(agent.id),
-            changes=changes,
-            metadata=get_request_metadata(request),
-            auth_token=token.token
+            user_id=str(token.id),
+            action="AGENT_UPDATE",
+            description=f"Updated agent: {agent.name}",
+            metadata={
+                **get_request_metadata(request),
+                "agent_id": str(agent.id),
+                "changes": changes
+            }
         )
     
     await db.commit()
@@ -223,7 +233,7 @@ async def delete_agent(
     agent_id: UUID,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    token: Token = Depends(verify_token)
+    auth_data: Dict[str, Any] = Depends(verify_jwt_token)
 ) -> Dict[str, str]:
     """Delete an agent."""
     # Get existing agent
@@ -234,14 +244,18 @@ async def delete_agent(
         raise HTTPException(status_code=404, detail="Agent not found")
     
     # Create audit log
+    token = auth_data["token"]
     await create_audit_log(
         db,
-        action="DELETE",
-        entity_type="agent",
-        entity_id=str(agent.id),
-        changes={"name": agent.name, "config": agent.config},
-        metadata=get_request_metadata(request),
-        auth_token=token.token
+        user_id=str(token.id),
+        action="AGENT_DELETE",
+        description=f"Deleted agent: {agent.name}",
+        metadata={
+            **get_request_metadata(request),
+            "agent_id": str(agent.id),
+            "agent_name": agent.name,
+            "config": agent.config
+        }
     )
     
     # Delete agent

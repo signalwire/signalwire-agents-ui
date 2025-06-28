@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import { ArrowLeft, Save, Eye, Plus, Settings, Shield } from 'lucide-react'
+import { ArrowLeft, Save, Plus, Shield, Globe, Settings } from 'lucide-react'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -10,20 +10,25 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { agentsApi, Agent, AgentConfig } from '@/api/agents'
+import { agentsApi, AgentConfig } from '@/api/agents'
 import { settingsApi } from '@/api/settings'
 import { toast } from '@/components/ui/use-toast'
 import { PromptBuilder } from '@/components/agents/PromptBuilder'
 import { SkillsSelector } from '@/components/agents/SkillsSelector'
 import { ParamsEditor } from '@/components/agents/ParamsEditor'
 import { BasicAuthConfig } from '@/components/agents/BasicAuthConfig'
+import { Badge } from '@/components/ui/badge'
+import { LANGUAGE_PRESETS, ELEVENLABS_VOICE_MAP, getRimeVoices } from '@/lib/languagePresets'
+import { api } from '@/lib/api'
 
 interface AgentForm {
   name: string
   description: string
-  voice: string
-  language: string
-  engine: string
+  languageConfigId: string
+  customVoice?: string
+  customEngine?: string
+  customLanguage?: string
+  customModel?: string
 }
 
 export function AgentBuilderPage() {
@@ -40,24 +45,45 @@ export function AgentBuilderPage() {
   const [showSkillsSelector, setShowSkillsSelector] = useState(false)
   const [showParamsEditor, setShowParamsEditor] = useState(false)
   const [showBasicAuth, setShowBasicAuth] = useState(false)
+  const [languageConfigs, setLanguageConfigs] = useState<any[]>([])
+  const [selectedPresets, setSelectedPresets] = useState<string[]>([])
 
   const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<AgentForm>({
     defaultValues: {
       name: '',
       description: '',
-      voice: 'nova',
-      language: 'en-US',
-      engine: 'rime',
+      languageConfigId: 'custom',
+      customVoice: '',
+      customEngine: 'elevenlabs',
+      customLanguage: 'en-US',
+      customModel: '',
     }
   })
 
-  const selectedEngine = watch('engine')
+  const selectedConfigId = watch('languageConfigId')
+  const isCustomConfig = selectedConfigId === 'custom'
 
   // Fetch settings for voice options
-  const { data: settings } = useQuery({
+  const { } = useQuery({
     queryKey: ['settings'],
     queryFn: settingsApi.get,
   })
+
+  // Fetch language configurations
+  const { data: langConfigData } = useQuery({
+    queryKey: ['language-configs'],
+    queryFn: async () => {
+      const response = await api.get('/api/admin/settings/language-configs')
+      return response.data
+    },
+  })
+
+  useEffect(() => {
+    if (langConfigData) {
+      setLanguageConfigs(langConfigData.configs || [])
+      setSelectedPresets(langConfigData.selectedPresets || [])
+    }
+  }, [langConfigData])
 
   // Fetch existing agent if editing
   const { data: agent } = useQuery({
@@ -68,17 +94,56 @@ export function AgentBuilderPage() {
 
   // Load agent data when editing
   useEffect(() => {
-    if (agent) {
+    if (agent && languageConfigs) {
       setValue('name', agent.name)
       setValue('description', agent.description || '')
-      setValue('voice', agent.config.voice)
-      setValue('language', agent.config.language)
       
-      // Determine engine from voice
-      const voice = agent.config.voice
-      if (settings?.rime_voices.includes(voice)) setValue('engine', 'rime')
-      else if (settings?.openai_voices.includes(voice)) setValue('engine', 'openai')
-      // Add other engines as needed
+      // Try to find a matching preset/config
+      const allConfigs = getAllConfigs()
+      
+      // Check if it's an ElevenLabs voice
+      let matchingConfig = null
+      
+      if (agent.config.engine === 'elevenlabs') {
+        // For ElevenLabs, presets store voice IDs, so compare directly
+        matchingConfig = allConfigs.find(config => {
+          if (config.engine === 'elevenlabs') {
+            // Handle both with and without elevenlabs. prefix
+            const agentVoiceId = agent.config.voice?.startsWith('elevenlabs.') 
+              ? agent.config.voice.substring('elevenlabs.'.length)
+              : agent.config.voice
+            const configVoiceId = config.voice?.startsWith('elevenlabs.') 
+              ? config.voice.substring('elevenlabs.'.length)
+              : config.voice
+            
+            return configVoiceId === agentVoiceId &&
+                   config.code === agent.config.language &&
+                   (!config.model || config.model === agent.config.model)
+          }
+          return false
+        })
+      } else {
+        // For other engines, direct comparison
+        matchingConfig = allConfigs.find(config => 
+          config.voice === agent.config.voice &&
+          config.code === agent.config.language &&
+          config.engine === agent.config.engine &&
+          (!config.model || config.model === agent.config.model)
+        )
+      }
+      
+      if (matchingConfig) {
+        setValue('languageConfigId', matchingConfig.id)
+      } else {
+        // Use custom configuration
+        setValue('languageConfigId', 'custom')
+        setValue('customLanguage', agent.config.language)
+        setValue('customEngine', agent.config.engine || 'elevenlabs')
+        setValue('customModel', agent.config.model || '')
+        
+        // Set custom voice value - store the raw ID
+        setValue('customVoice', agent.config.voice)
+      }
 
       setPromptSections(agent.config.prompt_sections)
       setSkills(agent.config.skills)
@@ -90,26 +155,53 @@ export function AgentBuilderPage() {
         })
       }
     }
-  }, [agent, settings, setValue])
+  }, [agent, languageConfigs, setValue])
 
-  // Get available voices for selected engine
-  const getVoicesForEngine = (engine: string) => {
-    if (!settings) return []
-    switch (engine) {
-      case 'rime': return settings.rime_voices
-      case 'elevenlabs': return settings.elevenlabs_voices
-      case 'azure': return settings.azure_voices
-      case 'openai': return settings.openai_voices
-      case 'google': return settings.google_voices
-      default: return []
-    }
+  // Get available presets based on selected presets
+  const getAvailablePresets = () => {
+    return LANGUAGE_PRESETS.filter(preset => selectedPresets.includes(preset.id))
+  }
+
+  // Get all available language configs (custom + presets)
+  const getAllConfigs = () => {
+    return [...languageConfigs, ...getAvailablePresets()]
   }
 
   const createMutation = useMutation({
     mutationFn: (data: AgentForm) => {
+      let voice, language, engine, model;
+      
+      if (data.languageConfigId === 'custom') {
+        // Use custom values
+        engine = data.customEngine || 'elevenlabs'
+        language = data.customLanguage || 'en-US'
+        model = data.customModel
+        
+        // Use voice directly - it's already an ID
+        voice = data.customVoice || ''
+      } else {
+        // Find the selected config
+        const selectedConfig = [...languageConfigs, ...getAvailablePresets()]
+          .find(c => c.id === data.languageConfigId)
+        
+        if (selectedConfig) {
+          voice = selectedConfig.voice
+          language = selectedConfig.code
+          engine = selectedConfig.engine
+          model = selectedConfig.model
+        } else {
+          // Fallback to defaults
+          voice = 'adam'
+          language = 'en-US'
+          engine = 'elevenlabs'
+        }
+      }
+
       const config: AgentConfig = {
-        voice: data.voice,
-        language: data.language,
+        voice,
+        language,
+        engine,
+        model,
         prompt_sections: promptSections,
         skills: skills,
         params: params,
@@ -141,9 +233,39 @@ export function AgentBuilderPage() {
 
   const updateMutation = useMutation({
     mutationFn: (data: AgentForm) => {
+      let voice, language, engine, model;
+      
+      if (data.languageConfigId === 'custom') {
+        // Use custom values
+        engine = data.customEngine || 'elevenlabs'
+        language = data.customLanguage || 'en-US'
+        model = data.customModel
+        
+        // Use voice directly - it's already an ID
+        voice = data.customVoice || ''
+      } else {
+        // Find the selected config
+        const selectedConfig = [...languageConfigs, ...getAvailablePresets()]
+          .find(c => c.id === data.languageConfigId)
+        
+        if (selectedConfig) {
+          voice = selectedConfig.voice
+          language = selectedConfig.code
+          engine = selectedConfig.engine
+          model = selectedConfig.model
+        } else {
+          // Fallback to defaults
+          voice = 'adam'
+          language = 'en-US'
+          engine = 'elevenlabs'
+        }
+      }
+
       const config: AgentConfig = {
-        voice: data.voice,
-        language: data.language,
+        voice,
+        language,
+        engine,
+        model,
         prompt_sections: promptSections,
         skills: skills,
         params: params,
@@ -197,7 +319,7 @@ export function AgentBuilderPage() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-2xl font-bold">
+              <h1 className="text-2xl font-bold text-heading-primary">
                 {isEditMode ? 'Edit Agent' : 'Create New Agent'}
               </h1>
               <p className="text-muted-foreground">
@@ -216,7 +338,7 @@ export function AgentBuilderPage() {
         {/* Basic Information */}
         <Card>
           <CardHeader>
-            <CardTitle>Basic Information</CardTitle>
+            <CardTitle className="text-heading-secondary">Basic Information</CardTitle>
             <CardDescription>
               Set the name and description for your agent
             </CardDescription>
@@ -248,75 +370,254 @@ export function AgentBuilderPage() {
         {/* Voice Configuration */}
         <Card>
           <CardHeader>
-            <CardTitle>Voice & Language</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-heading-secondary">
+              <Globe className="h-5 w-5" />
+              Voice & Language
+            </CardTitle>
             <CardDescription>
-              Configure how your agent sounds
+              Configure how your agent sounds and what language it speaks
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="language">Language</Label>
-                <Select
-                  value={watch('language')}
-                  onValueChange={(value) => setValue('language', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {settings?.available_languages.map((lang) => (
-                      <SelectItem key={lang} value={lang}>
-                        {lang}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="engine">Voice Engine</Label>
-                <Select
-                  value={selectedEngine}
-                  onValueChange={(value) => {
-                    setValue('engine', value)
-                    // Reset voice when engine changes
-                    const voices = getVoicesForEngine(value)
-                    if (voices.length > 0) {
-                      setValue('voice', voices[0])
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {settings?.available_engines.map((engine) => (
-                      <SelectItem key={engine} value={engine}>
-                        {engine.charAt(0).toUpperCase() + engine.slice(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="voice">Voice</Label>
-                <Select
-                  value={watch('voice')}
-                  onValueChange={(value) => setValue('voice', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getVoicesForEngine(selectedEngine).map((voice) => (
-                      <SelectItem key={voice} value={voice}>
-                        {voice}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="languageConfig">Language Configuration</Label>
+              <Select
+                value={selectedConfigId}
+                onValueChange={(value) => setValue('languageConfigId', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a language configuration" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="custom">Custom Configuration</SelectItem>
+                  {getAllConfigs().length > 0 && (
+                    <>
+                      <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
+                        Available Presets
+                      </div>
+                      {getAllConfigs().map((config) => (
+                        <SelectItem key={config.id} value={config.id}>
+                          <div className="flex items-center gap-2">
+                            <span>{config.displayName}</span>
+                            {config.code === 'multi' && (
+                              <Badge variant="outline" className="text-xs">Multi</Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
+
+            {/* Show selected config details */}
+            {!isCustomConfig && selectedConfigId !== 'custom' && (() => {
+              const config = getAllConfigs().find(c => c.id === selectedConfigId)
+              return config ? (
+                <div className="rounded-lg border p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">Language:</span> {config.properName} ({config.code})
+                    </div>
+                    <div>
+                      <span className="font-medium">Engine:</span> {config.engine}
+                    </div>
+                    <div>
+                      <span className="font-medium">Voice:</span> {config.voice}
+                    </div>
+                    {config.model && (
+                      <div>
+                        <span className="font-medium">Model:</span> {config.model}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : null
+            })()}
+
+            {/* Custom configuration fields */}
+            {isCustomConfig && (
+              <div className="space-y-4 pt-4 border-t">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="customLanguage">Language Code</Label>
+                    <Input
+                      id="customLanguage"
+                      {...register('customLanguage')}
+                      placeholder="e.g., en-US or multi"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      BCP-47 format or "multi" for multilingual
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="customEngine">TTS Engine</Label>
+                    <Select
+                      value={watch('customEngine')}
+                      onValueChange={(value) => setValue('customEngine', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="rime">Rime</SelectItem>
+                        <SelectItem value="elevenlabs">ElevenLabs</SelectItem>
+                        <SelectItem value="openai">OpenAI</SelectItem>
+                        <SelectItem value="azure">Azure</SelectItem>
+                        <SelectItem value="google">Google</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {watch('customEngine') === 'rime' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="customModel">Model</Label>
+                      <Select
+                        value={watch('customModel') || ''}
+                        onValueChange={(value) => setValue('customModel', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select model" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="mist">Mist</SelectItem>
+                          <SelectItem value="mistv2">Mist v2</SelectItem>
+                          <SelectItem value="arcana">Arcana</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="customVoice">Voice</Label>
+                    {(() => {
+                      const engine = watch('customEngine');
+                      const model = watch('customModel');
+                      const language = watch('customLanguage');
+                      
+                      if (engine === 'elevenlabs') {
+                        return (
+                          <div className="space-y-2">
+                            <Select
+                              value={(() => {
+                                const currentVoice = watch('customVoice');
+                                if (!currentVoice) return '';
+                                
+                                // Check if current voice ID matches any preset
+                                const matchingEntry = Object.entries(ELEVENLABS_VOICE_MAP).find(([, voice]) => 
+                                  voice.id === currentVoice
+                                );
+                                
+                                // If we found a match, return the key (e.g., "adam")
+                                // Otherwise return "__custom__" to show the input box
+                                return matchingEntry ? matchingEntry[0] : '__custom__';
+                              })()}
+                              onValueChange={(value) => {
+                                if (value === '__custom__') {
+                                  // Don't change the value, just show the input
+                                  return;
+                                }
+                                // Set the voice ID from the selected key
+                                const voice = ELEVENLABS_VOICE_MAP[value];
+                                if (voice) {
+                                  setValue('customVoice', voice.id);
+                                }
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select voice" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(ELEVENLABS_VOICE_MAP).map(([key, voice]) => (
+                                  <SelectItem key={key} value={key}>
+                                    {voice.name}
+                                  </SelectItem>
+                                ))}
+                                <SelectItem value="__custom__">Custom voice ID...</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {(() => {
+                              const currentVoice = watch('customVoice');
+                              const isCustom = currentVoice && !Object.values(ELEVENLABS_VOICE_MAP).some(v => v.id === currentVoice);
+                              return isCustom ? (
+                                <Input
+                                  {...register('customVoice')}
+                                  placeholder="Enter custom voice ID"
+                                />
+                              ) : null;
+                            })()}
+                          </div>
+                        );
+                      } else if (engine === 'rime' && (model === 'mist' || model === 'mistv2')) {
+                        // For mist and mistv2, show dropdown only
+                        const voices = getRimeVoices(model, language || 'en-US');
+                        return (
+                          <Select
+                            value={watch('customVoice') || ''}
+                            onValueChange={(value) => setValue('customVoice', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select voice" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {voices.map((voice) => (
+                                <SelectItem key={voice} value={voice}>
+                                  {voice.charAt(0).toUpperCase() + voice.slice(1)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        );
+                      } else if (engine === 'rime' && model === 'arcana') {
+                        // For arcana, show dropdown + custom input
+                        const voices = getRimeVoices(model, language || 'en-US');
+                        const currentVoice = watch('customVoice');
+                        const isPresetVoice = voices.includes(currentVoice || '');
+                        
+                        return (
+                          <div className="space-y-2">
+                            <Select
+                              value={isPresetVoice ? currentVoice : '__custom__'}
+                              onValueChange={(value) => {
+                                if (value !== '__custom__') {
+                                  setValue('customVoice', value);
+                                }
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select voice" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {voices.map((voice) => (
+                                  <SelectItem key={voice} value={voice}>
+                                    {voice.charAt(0).toUpperCase() + voice.slice(1)}
+                                  </SelectItem>
+                                ))}
+                                <SelectItem value="__custom__">Custom voice name...</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {(!currentVoice || !isPresetVoice) && (
+                              <Input
+                                {...register('customVoice')}
+                                placeholder="Enter custom voice name (Arcana will guess personality)"
+                              />
+                            )}
+                          </div>
+                        );
+                      } else {
+                        // Default input for other engines
+                        return (
+                          <Input
+                            id="customVoice"
+                            {...register('customVoice')}
+                            placeholder="e.g., nova"
+                          />
+                        );
+                      }
+                    })()}
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -328,7 +629,7 @@ export function AgentBuilderPage() {
             onClick={() => setShowPromptBuilder(true)}
           >
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
+              <CardTitle className="flex items-center justify-between text-heading-card">
                 Agent Instructions
                 <Plus className="h-4 w-4" />
               </CardTitle>
@@ -349,7 +650,7 @@ export function AgentBuilderPage() {
             onClick={() => setShowSkillsSelector(true)}
           >
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
+              <CardTitle className="flex items-center justify-between text-heading-card">
                 Skills
                 <Plus className="h-4 w-4" />
               </CardTitle>
@@ -370,7 +671,7 @@ export function AgentBuilderPage() {
             onClick={() => setShowParamsEditor(true)}
           >
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
+              <CardTitle className="flex items-center justify-between text-heading-card">
                 AI Parameters
                 <Settings className="h-4 w-4" />
               </CardTitle>
@@ -391,7 +692,7 @@ export function AgentBuilderPage() {
             onClick={() => setShowBasicAuth(true)}
           >
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
+              <CardTitle className="flex items-center justify-between text-heading-card">
                 Access Control
                 <Shield className="h-4 w-4" />
               </CardTitle>

@@ -15,6 +15,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 class LoginRequest(BaseModel):
     token: str
+    remember_me: bool = False
 
 
 class LoginResponse(BaseModel):
@@ -34,7 +35,7 @@ async def login(
     result = await db.execute(
         select(Token).where(
             Token.token == login_data.token,
-            Token.active == True
+            Token.is_active == True
         )
     )
     token_obj = result.scalar_one_or_none()
@@ -43,9 +44,9 @@ async def login(
         # Log failed login attempt
         await create_audit_log(
             db,
+            user_id="anonymous",
             action="LOGIN_FAILED",
-            entity_type="auth",
-            entity_id=login_data.token[:8] + "...",  # Partial token for security
+            description=f"Failed login attempt with token: {login_data.token[:8]}...",
             metadata=get_request_metadata(request)
         )
         raise HTTPException(status_code=401, detail="Invalid or inactive token")
@@ -54,16 +55,15 @@ async def login(
     jwt_token = create_jwt_token({
         "token_id": token_obj.id,
         "token_name": token_obj.name
-    })
+    }, remember_me=login_data.remember_me)
     
     # Log successful login
     await create_audit_log(
         db,
+        user_id=str(token_obj.id),
         action="LOGIN",
-        entity_type="auth",
-        entity_id=str(token_obj.id),
-        metadata=get_request_metadata(request),
-        auth_token=token_obj.token
+        description=f"Successful login for token: {token_obj.name}",
+        metadata=get_request_metadata(request)
     )
     
     return {

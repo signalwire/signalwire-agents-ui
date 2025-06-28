@@ -3,6 +3,8 @@ import { apiClient } from './client'
 export interface AgentConfig {
   voice: string
   language: string
+  engine?: string
+  model?: string
   prompt_sections: Array<{
     title: string
     body?: string

@@ -52,6 +52,10 @@ export const settingsApi = {
     }
   },
 
+  updateSetting: async (key: string, value: any): Promise<void> => {
+    await apiClient.put(`/admin/settings/${key}`, { value })
+  },
+
   getSecuritySettings: async (): Promise<SecuritySettings> => {
     const response = await apiClient.get('/api/admin/security')
     return response.data

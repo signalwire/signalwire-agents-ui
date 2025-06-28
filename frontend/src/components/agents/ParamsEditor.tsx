@@ -13,12 +13,25 @@ interface ParamsEditorProps {
   onChange: (params: Record<string, any>) => void
 }
 
-const COMMON_PARAMS = [
+interface ParamConfig {
+  key: string
+  label: string
+  type: string
+  default: any
+  description: string
+  unit?: string
+  min?: number
+  max?: number
+  step?: number
+  options?: string[]
+}
+
+const COMMON_PARAMS: ParamConfig[] = [
   {
     key: 'end_of_speech_timeout',
     label: 'End of Speech Timeout',
     type: 'number',
-    default: 2000,
+    default: 700,
     description: 'Time in milliseconds to wait for speech to end',
     unit: 'ms',
   },
@@ -26,25 +39,9 @@ const COMMON_PARAMS = [
     key: 'attention_timeout',
     label: 'Attention Timeout',
     type: 'number',
-    default: 20000,
+    default: 5000,
     description: 'Maximum time to wait for user input',
     unit: 'ms',
-  },
-  {
-    key: 'background_file_volume',
-    label: 'Background Volume',
-    type: 'number',
-    default: -20,
-    description: 'Volume adjustment for background audio',
-    unit: 'dB',
-  },
-  {
-    key: 'ai_model',
-    label: 'AI Model',
-    type: 'select',
-    default: 'gpt-4o-mini',
-    options: ['gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo'],
-    description: 'The AI model to use for responses',
   },
   {
     key: 'temperature',
@@ -86,9 +83,6 @@ export function ParamsEditor({ open, onClose, params, onChange }: ParamsEditorPr
     onClose()
   }
 
-  const getParamInfo = (key: string) => {
-    return COMMON_PARAMS.find(p => p.key === key)
-  }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -131,7 +125,7 @@ export function ParamsEditor({ open, onClose, params, onChange }: ParamsEditorPr
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {param.options?.map((option) => (
+                          {param.options?.map((option: string) => (
                             <SelectItem key={option} value={option}>
                               {option}
                             </SelectItem>

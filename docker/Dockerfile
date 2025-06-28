@@ -15,9 +15,8 @@ RUN apt-get update && apt-get install -y \
     supervisor \
     && rm -rf /var/lib/apt/lists/*
 
-# Remove any existing Node.js and install from NodeSource
-RUN apt-get remove -y nodejs npm && \
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+# Install Node.js from NodeSource
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs
 
 # Create app directory
@@ -27,18 +26,21 @@ WORKDIR /app
 # Copy signalwire-agents if it exists locally
 COPY signalwire-agents* ./signalwire-agents/
 
+# Set python3.11 as default python3
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+
 # Install signalwire-agents - use local if present, otherwise from pip
 RUN if [ -d "./signalwire-agents" ]; then \
         echo "Installing local signalwire-agents..." && \
-        pip3 install --no-cache-dir -e ./signalwire-agents; \
+        python3.11 -m pip install --no-cache-dir -e ./signalwire-agents; \
     else \
         echo "Installing signalwire-agents from pip..." && \
-        pip3 install --no-cache-dir signalwire-agents>=1.0.0; \
+        python3.11 -m pip install --no-cache-dir signalwire-agents>=1.0.0; \
     fi
 
 # Layer 2b: Python dependencies (changes less frequently)
 COPY backend/requirements.txt ./backend/
-RUN pip3 install --no-cache-dir -r backend/requirements.txt
+RUN python3.11 -m pip install --no-cache-dir -r backend/requirements.txt
 
 # Layer 3: Frontend dependencies (changes less frequently)
 COPY frontend/package*.json ./frontend/
@@ -56,6 +58,7 @@ COPY backend/ ./backend/
 # Layer 6: Configuration files
 COPY docker/nginx.conf /etc/nginx/sites-available/default
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY certs/ /certs/
 
 # Create necessary directories
 RUN mkdir -p /var/log/supervisor /var/log/nginx /app/logs

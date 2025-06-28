@@ -3,23 +3,30 @@ from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 from typing import Dict, Any, Optional
+import json
 
 
 async def create_audit_log(
     db: AsyncSession,
+    user_id: str,
     action: str,
-    entity_type: str,
-    entity_id: str,
-    metadata: Optional[Dict[str, Any]] = None,
-    auth_token: Optional[str] = None
+    description: str,
+    metadata: Optional[Dict[str, Any]] = None
 ) -> None:
     """Create an audit log entry."""
+    from sqlalchemy import text
     await db.execute(
-        """
-        INSERT INTO audit_log (timestamp, action, entity_type, entity_id, metadata, auth_token)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        """,
-        datetime.utcnow(), action, entity_type, entity_id, metadata or {}, auth_token
+        text("""
+        INSERT INTO audit_logs (user_id, action, description, metadata, timestamp)
+        VALUES (:user_id, :action, :description, :metadata, :timestamp)
+        """),
+        {
+            "user_id": user_id,
+            "action": action,
+            "description": description,
+            "metadata": json.dumps(metadata or {}),
+            "timestamp": datetime.utcnow()
+        }
     )
     await db.commit()
 

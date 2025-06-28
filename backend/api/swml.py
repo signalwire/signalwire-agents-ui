@@ -8,7 +8,7 @@ from uuid import UUID
 import secrets
 
 from ..core.database import get_db
-from ..core.models import Agent, Setting
+from ..models import Agent, Setting
 from ..core.swml_generator import generate_swml
 from ..core.config import settings
 from slowapi import Limiter

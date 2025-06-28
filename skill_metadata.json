@@ -1,0 +1,871 @@
+[
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/api_ninjas_trivia/skill.py",
+    "class_name": "ApiNinjasTriviaSkill",
+    "skill_name": "api_ninjas_trivia",
+    "skill_description": "Get trivia questions from API Ninjas",
+    "skill_version": "1.0.0",
+    "supports_multiple_instances": true,
+    "required_packages": [],
+    "required_env_vars": [],
+    "class_docstring": "Skill for getting trivia questions from API Ninjas with configurable categories.\n\nSupports multiple instances with different tool names and category combinations.\nUses DataMap for serverless execution with dynamic enum generation.\n\nConfiguration:\n- tool_name: Custom name for the generated SWAIG function\n- api_key: API Ninjas API key\n- categories: Array of category strings to enable\n\nAvailable categories:\n- artliterature: Art and Literature\n- language: Language  \n- sciencenature: Science and Nature\n- general: General Knowledge\n- fooddrink: Food and Drink\n- peopleplaces: People and Places\n- geography: Geography\n- historyholidays: History and Holidays\n- entertainment: Entertainment\n- toysgames: Toys and Games\n- music: Music\n- mathematics: Mathematics\n- religionmythology: Religion and Mythology\n- sportsleisure: Sports and Leisure\n\nExample:\n    agent.add_skill(\"api_ninjas_trivia\", {\n        \"tool_name\": \"get_science_trivia\",\n        \"api_key\": \"your_api_key\",\n        \"categories\": [\"sciencenature\", \"mathematics\", \"general\"]\n    })",
+    "parameters": {},
+    "required_params": [],
+    "optional_params": {},
+    "tools": []
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/datasphere/skill.py",
+    "class_name": "DataSphereSkill",
+    "skill_name": "datasphere",
+    "skill_description": "Search knowledge using SignalWire DataSphere RAG stack",
+    "skill_version": "1.0.0",
+    "supports_multiple_instances": true,
+    "required_packages": [
+      "requests"
+    ],
+    "required_env_vars": [],
+    "class_docstring": "SignalWire DataSphere knowledge search capability",
+    "parameters": {
+      "project_id": {
+        "name": "project_id",
+        "required": true,
+        "type": "string",
+        "description": "Project identifier"
+      },
+      "no_results_message": {
+        "name": "no_results_message",
+        "required": false,
+        "type": "string",
+        "description": "Message to display when no results are found",
+        "default": "I couldn't find any relevant information for '{query}' in the knowledge base. Try rephrasing your question or asking about a different topic."
+      },
+      "document_id": {
+        "name": "document_id",
+        "required": true,
+        "type": "string",
+        "description": "Document identifier"
+      },
+      "pos_to_expand": {
+        "name": "pos_to_expand",
+        "required": false,
+        "type": "string",
+        "description": "None means don't include in request",
+        "default": null
+      },
+      "tags": {
+        "name": "tags",
+        "required": false,
+        "type": "string",
+        "description": "None means don't include in request",
+        "default": null
+      },
+      "distance": {
+        "name": "distance",
+        "required": false,
+        "type": "number",
+        "description": "Distance threshold for search results",
+        "default": 3.0
+      },
+      "count": {
+        "name": "count",
+        "required": false,
+        "type": "integer",
+        "description": "Number of results to return",
+        "default": 1
+      },
+      "tool_name": {
+        "name": "tool_name",
+        "required": false,
+        "type": "string",
+        "description": "Name of the tool/function to register",
+        "default": "search_knowledge"
+      },
+      "language": {
+        "name": "language",
+        "required": false,
+        "type": "string",
+        "description": "None means don't include in request",
+        "default": null
+      },
+      "max_synonyms": {
+        "name": "max_synonyms",
+        "required": false,
+        "type": "string",
+        "description": "None means don't include in request",
+        "default": null
+      },
+      "space_name": {
+        "name": "space_name",
+        "required": true,
+        "type": "string",
+        "description": "Space name for the service"
+      },
+      "token": {
+        "name": "token",
+        "required": true,
+        "type": "string",
+        "description": "Authentication token"
+      }
+    },
+    "required_params": [
+      "document_id",
+      "project_id",
+      "space_name",
+      "token"
+    ],
+    "optional_params": {
+      "count": 1,
+      "distance": 3.0,
+      "tags": null,
+      "language": null,
+      "pos_to_expand": null,
+      "max_synonyms": null,
+      "tool_name": "search_knowledge",
+      "no_results_message": "I couldn't find any relevant information for '{query}' in the knowledge base. Try rephrasing your question or asking about a different topic."
+    },
+    "tools": []
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/datasphere_serverless/skill.py",
+    "class_name": "DataSphereServerlessSkill",
+    "skill_name": "datasphere_serverless",
+    "skill_description": "Search knowledge using SignalWire DataSphere with serverless DataMap execution",
+    "skill_version": "1.0.0",
+    "supports_multiple_instances": true,
+    "required_packages": [],
+    "required_env_vars": [],
+    "class_docstring": "SignalWire DataSphere knowledge search using DataMap (serverless execution)",
+    "parameters": {
+      "project_id": {
+        "name": "project_id",
+        "required": true,
+        "type": "string",
+        "description": "Project identifier"
+      },
+      "no_results_message": {
+        "name": "no_results_message",
+        "required": false,
+        "type": "string",
+        "description": "Message to display when no results are found",
+        "default": "I couldn't find any relevant information for '{query}' in the knowledge base. Try rephrasing your question or asking about a different topic."
+      },
+      "document_id": {
+        "name": "document_id",
+        "required": true,
+        "type": "string",
+        "description": "Document identifier"
+      },
+      "pos_to_expand": {
+        "name": "pos_to_expand",
+        "required": false,
+        "type": "string",
+        "description": "pos_to_expand parameter",
+        "default": null
+      },
+      "tags": {
+        "name": "tags",
+        "required": false,
+        "type": "string",
+        "description": "Tags to filter results",
+        "default": null
+      },
+      "distance": {
+        "name": "distance",
+        "required": false,
+        "type": "number",
+        "description": "Distance threshold for search results",
+        "default": 3.0
+      },
+      "count": {
+        "name": "count",
+        "required": false,
+        "type": "integer",
+        "description": "Number of results to return",
+        "default": 1
+      },
+      "tool_name": {
+        "name": "tool_name",
+        "required": false,
+        "type": "string",
+        "description": "Name of the tool/function to register",
+        "default": "search_knowledge"
+      },
+      "language": {
+        "name": "language",
+        "required": false,
+        "type": "string",
+        "description": "Language for query processing",
+        "default": null
+      },
+      "max_synonyms": {
+        "name": "max_synonyms",
+        "required": false,
+        "type": "string",
+        "description": "max_synonyms parameter",
+        "default": null
+      },
+      "space_name": {
+        "name": "space_name",
+        "required": true,
+        "type": "string",
+        "description": "Space name for the service"
+      },
+      "token": {
+        "name": "token",
+        "required": true,
+        "type": "string",
+        "description": "Authentication token"
+      }
+    },
+    "required_params": [
+      "document_id",
+      "project_id",
+      "space_name",
+      "token"
+    ],
+    "optional_params": {
+      "count": 1,
+      "distance": 3.0,
+      "tags": null,
+      "language": null,
+      "pos_to_expand": null,
+      "max_synonyms": null,
+      "tool_name": "search_knowledge",
+      "no_results_message": "I couldn't find any relevant information for '{query}' in the knowledge base. Try rephrasing your question or asking about a different topic."
+    },
+    "tools": []
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/datetime/skill.py",
+    "class_name": "DateTimeSkill",
+    "skill_name": "datetime",
+    "skill_description": "Get current date, time, and timezone information",
+    "skill_version": "1.0.0",
+    "supports_multiple_instances": false,
+    "required_packages": [
+      "pytz"
+    ],
+    "required_env_vars": [],
+    "class_docstring": "Provides current date, time, and timezone information",
+    "parameters": {},
+    "required_params": [],
+    "optional_params": {},
+    "tools": [
+      {
+        "parameters": {
+          "timezone": {
+            "name": "timezone",
+            "type": "string",
+            "description": "Timezone name (e.g., 'America/New_York', 'Europe/London'). Defaults to UTC."
+          }
+        },
+        "name": "get_current_time",
+        "description": "Get the current time, optionally in a specific timezone"
+      },
+      {
+        "parameters": {
+          "timezone": {
+            "name": "timezone",
+            "type": "string",
+            "description": "Timezone name for the date. Defaults to UTC."
+          }
+        },
+        "name": "get_current_date",
+        "description": "Get the current date"
+      }
+    ]
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/joke/skill.py",
+    "class_name": "JokeSkill",
+    "skill_name": "joke",
+    "skill_description": "Tell jokes using the API Ninjas joke API",
+    "skill_version": "1.0.0",
+    "supports_multiple_instances": false,
+    "required_packages": [],
+    "required_env_vars": [],
+    "class_docstring": "Joke telling capability using API Ninjas with DataMap",
+    "parameters": {
+      "tool_name": {
+        "name": "tool_name",
+        "required": false,
+        "type": "string",
+        "description": "Name of the tool/function to register",
+        "default": "get_joke"
+      },
+      "api_key": {
+        "name": "api_key",
+        "required": true,
+        "type": "string",
+        "description": "API key for authentication"
+      }
+    },
+    "required_params": [
+      "api_key"
+    ],
+    "optional_params": {
+      "tool_name": "get_joke"
+    },
+    "tools": []
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/math/skill.py",
+    "class_name": "MathSkill",
+    "skill_name": "math",
+    "skill_description": "Perform basic mathematical calculations",
+    "skill_version": "1.0.0",
+    "supports_multiple_instances": false,
+    "required_packages": [],
+    "required_env_vars": [],
+    "class_docstring": "Provides basic mathematical calculation capabilities",
+    "parameters": {},
+    "required_params": [],
+    "optional_params": {},
+    "tools": [
+      {
+        "parameters": {
+          "expression": {
+            "name": "expression",
+            "type": "string",
+            "description": "Mathematical expression to evaluate (e.g., '2 + 3 * 4', '(10 + 5) / 3')"
+          }
+        },
+        "name": "calculate",
+        "description": "Perform a mathematical calculation with basic operations (+, -, *, /, %, **)"
+      }
+    ]
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/mcp_gateway/skill.py",
+    "class_name": "MCPGatewaySkill",
+    "skill_name": "mcp_gateway",
+    "skill_description": "Bridge MCP servers with SWAIG functions",
+    "skill_version": "1.0.0",
+    "supports_multiple_instances": false,
+    "required_packages": [
+      "requests"
+    ],
+    "required_env_vars": [],
+    "class_docstring": "MCP Gateway Skill - Bridge MCP servers with SWAIG functions\n\nThis skill connects SignalWire agents to MCP (Model Context Protocol) servers\nthrough a gateway service, dynamically creating SWAIG functions for MCP tools.",
+    "parameters": {
+      "verify_ssl": {
+        "name": "verify_ssl",
+        "required": false,
+        "type": "boolean",
+        "description": "Whether to verify SSL certificates",
+        "default": true
+      },
+      "tool_prefix": {
+        "name": "tool_prefix",
+        "required": false,
+        "type": "string",
+        "description": "tool_prefix parameter",
+        "default": "mcp_"
+      },
+      "request_timeout": {
+        "name": "request_timeout",
+        "required": false,
+        "type": "integer",
+        "description": "request_timeout parameter",
+        "default": 30
+      },
+      "retry_attempts": {
+        "name": "retry_attempts",
+        "required": false,
+        "type": "integer",
+        "description": "retry_attempts parameter",
+        "default": 3
+      },
+      "auth_user": {
+        "name": "auth_user",
+        "required": true,
+        "type": "string",
+        "description": "auth_user parameter"
+      },
+      "services": {
+        "name": "services",
+        "required": false,
+        "type": "array",
+        "description": "List of services to enable",
+        "default": []
+      },
+      "session_timeout": {
+        "name": "session_timeout",
+        "required": false,
+        "type": "integer",
+        "description": "session_timeout parameter",
+        "default": 300
+      },
+      "auth_password": {
+        "name": "auth_password",
+        "required": true,
+        "type": "string",
+        "description": "auth_password parameter"
+      },
+      "auth_token": {
+        "name": "auth_token",
+        "required": false,
+        "type": "string",
+        "description": "auth_token parameter",
+        "default": null
+      },
+      "gateway_url": {
+        "name": "gateway_url",
+        "required": true,
+        "type": "string",
+        "description": "Gateway URL endpoint"
+      }
+    },
+    "required_params": [
+      "auth_user",
+      "gateway_url",
+      "auth_password"
+    ],
+    "optional_params": {
+      "auth_token": null,
+      "services": [],
+      "session_timeout": 300,
+      "tool_prefix": "mcp_",
+      "retry_attempts": 3,
+      "request_timeout": 30,
+      "verify_ssl": true
+    },
+    "tools": [
+      {
+        "parameters": {},
+        "name": "_mcp_gateway_hangup",
+        "description": "Internal cleanup function for MCP sessions"
+      }
+    ]
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/native_vector_search/skill.py",
+    "class_name": "NativeVectorSearchSkill",
+    "skill_name": "native_vector_search",
+    "skill_description": "Search document indexes using vector similarity and keyword search (local or remote)",
+    "skill_version": "1.0.0",
+    "supports_multiple_instances": true,
+    "required_packages": [],
+    "required_env_vars": [],
+    "class_docstring": "Native vector search capability using local document indexes or remote search servers",
+    "parameters": {
+      "index_name": {
+        "name": "index_name",
+        "required": false,
+        "type": "string",
+        "description": "For remote searches",
+        "default": "default"
+      },
+      "index_file": {
+        "name": "index_file",
+        "required": false,
+        "type": "string",
+        "description": "Path to index file",
+        "default": null
+      },
+      "distance_threshold": {
+        "name": "distance_threshold",
+        "required": false,
+        "type": "number",
+        "description": "distance_threshold parameter",
+        "default": 0.0
+      },
+      "response_prefix": {
+        "name": "response_prefix",
+        "required": false,
+        "type": "string",
+        "description": "response_prefix parameter",
+        "default": ""
+      },
+      "no_results_message": {
+        "name": "no_results_message",
+        "required": false,
+        "type": "string",
+        "description": "Message to display when no results are found",
+        "default": "No information found for '{query}'"
+      },
+      "tags": {
+        "name": "tags",
+        "required": false,
+        "type": "array",
+        "description": "Tags to filter results",
+        "default": []
+      },
+      "nlp_backend": {
+        "name": "nlp_backend",
+        "required": false,
+        "type": "string",
+        "description": "Backward compatibility",
+        "default": null
+      },
+      "build_index": {
+        "name": "build_index",
+        "required": false,
+        "type": "boolean",
+        "description": "Whether to build the index",
+        "default": false
+      },
+      "response_postfix": {
+        "name": "response_postfix",
+        "required": false,
+        "type": "string",
+        "description": "response_postfix parameter",
+        "default": ""
+      },
+      "swaig_fields": {
+        "name": "swaig_fields",
+        "required": false,
+        "type": "object",
+        "description": "swaig_fields parameter",
+        "default": {}
+      },
+      "verbose": {
+        "name": "verbose",
+        "required": false,
+        "type": "boolean",
+        "description": "Enable verbose logging",
+        "default": false
+      },
+      "remote_url": {
+        "name": "remote_url",
+        "required": false,
+        "type": "string",
+        "description": "e.g., \"http://localhost:8001\"",
+        "default": null
+      },
+      "query_nlp_backend": {
+        "name": "query_nlp_backend",
+        "required": false,
+        "type": "string",
+        "description": "Default to fast NLTK for search",
+        "default": "nltk"
+      },
+      "index_nlp_backend": {
+        "name": "index_nlp_backend",
+        "required": false,
+        "type": "string",
+        "description": "Default to fast NLTK for indexing",
+        "default": "nltk"
+      },
+      "file_types": {
+        "name": "file_types",
+        "required": false,
+        "type": "array",
+        "description": "File types to include",
+        "default": []
+      },
+      "global_tags": {
+        "name": "global_tags",
+        "required": false,
+        "type": "string",
+        "description": "global_tags parameter",
+        "default": null
+      },
+      "source_dir": {
+        "name": "source_dir",
+        "required": false,
+        "type": "string",
+        "description": "Source directory for indexing",
+        "default": null
+      },
+      "count": {
+        "name": "count",
+        "required": false,
+        "type": "integer",
+        "description": "Number of results to return",
+        "default": 5
+      },
+      "exclude_patterns": {
+        "name": "exclude_patterns",
+        "required": false,
+        "type": "string",
+        "description": "exclude_patterns parameter",
+        "default": null
+      },
+      "tool_name": {
+        "name": "tool_name",
+        "required": false,
+        "type": "string",
+        "description": "Name of the tool/function to register",
+        "default": "search_knowledge"
+      }
+    },
+    "required_params": [],
+    "optional_params": {
+      "tool_name": "search_knowledge",
+      "index_file": null,
+      "build_index": false,
+      "source_dir": null,
+      "count": 5,
+      "distance_threshold": 0.0,
+      "tags": [],
+      "no_results_message": "No information found for '{query}'",
+      "response_prefix": "",
+      "response_postfix": "",
+      "remote_url": null,
+      "index_name": "default",
+      "swaig_fields": {},
+      "nlp_backend": null,
+      "index_nlp_backend": "nltk",
+      "query_nlp_backend": "nltk",
+      "verbose": false,
+      "file_types": [],
+      "exclude_patterns": null,
+      "global_tags": null
+    },
+    "tools": []
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/play_background_file/skill.py",
+    "class_name": "PlayBackgroundFileSkill",
+    "skill_name": "play_background_file",
+    "skill_description": "Control background file playback",
+    "skill_version": "1.0.0",
+    "supports_multiple_instances": true,
+    "required_packages": [],
+    "required_env_vars": [],
+    "class_docstring": "Skill for playing background files (audio/video) with configurable tool names.\n\nSupports multiple instances with different tool names and file collections.\nUses DataMap for serverless execution with dynamic enum generation.\n\nConfiguration:\n- tool_name: Custom name for the generated SWAIG function\n- files: Array of file objects with key, description, url, and optional wait\n\nExample:\n    agent.add_skill(\"play_background_file\", {\n        \"tool_name\": \"play_testimonial\",\n        \"files\": [\n            {\n                \"key\": \"massey\",\n                \"description\": \"Customer success story from Massey Energy\",\n                \"url\": \"https://example.com/massey.mp4\",\n                \"wait\": True\n            }\n        ]\n    })",
+    "parameters": {},
+    "required_params": [],
+    "optional_params": {},
+    "tools": []
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/spider/skill.py",
+    "class_name": "SpiderSkill",
+    "skill_name": "spider",
+    "skill_description": "Fast web scraping and crawling capabilities",
+    "skill_version": "1.0.0",
+    "supports_multiple_instances": true,
+    "required_packages": [
+      "lxml"
+    ],
+    "required_env_vars": [],
+    "class_docstring": "Fast web scraping skill optimized for speed and token efficiency.",
+    "parameters": {},
+    "required_params": [],
+    "optional_params": {},
+    "tools": []
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/swml_transfer/skill.py",
+    "class_name": "SWMLTransferSkill",
+    "skill_name": "swml_transfer",
+    "skill_description": "Transfer calls between agents based on pattern matching",
+    "skill_version": "1.0.0",
+    "supports_multiple_instances": true,
+    "required_packages": [],
+    "required_env_vars": [],
+    "class_docstring": "Skill for transferring calls between agents using SWML with pattern matching",
+    "parameters": {
+      "description": {
+        "name": "description",
+        "required": false,
+        "type": "string",
+        "description": "Description of the tool/function",
+        "default": "Transfer call based on pattern matching"
+      },
+      "transfers": {
+        "name": "transfers",
+        "required": true,
+        "type": "object",
+        "description": "Transfer configuration mapping",
+        "default": {}
+      },
+      "required_fields": {
+        "name": "required_fields",
+        "required": false,
+        "type": "object",
+        "description": "Fields that must be provided",
+        "default": {}
+      },
+      "default_post_process": {
+        "name": "default_post_process",
+        "required": false,
+        "type": "boolean",
+        "description": "default_post_process parameter",
+        "default": false
+      },
+      "parameter_description": {
+        "name": "parameter_description",
+        "required": false,
+        "type": "string",
+        "description": "parameter_description parameter",
+        "default": "The type of transfer to perform"
+      },
+      "parameter_name": {
+        "name": "parameter_name",
+        "required": false,
+        "type": "string",
+        "description": "parameter_name parameter",
+        "default": "transfer_type"
+      },
+      "tool_name": {
+        "name": "tool_name",
+        "required": false,
+        "type": "string",
+        "description": "Name of the tool/function to register",
+        "default": "transfer_call"
+      },
+      "default_message": {
+        "name": "default_message",
+        "required": false,
+        "type": "string",
+        "description": "default_message parameter",
+        "default": "Please specify a valid transfer type."
+      }
+    },
+    "required_params": [
+      "transfers"
+    ],
+    "optional_params": {
+      "transfers": {},
+      "tool_name": "transfer_call",
+      "description": "Transfer call based on pattern matching",
+      "parameter_name": "transfer_type",
+      "parameter_description": "The type of transfer to perform",
+      "default_message": "Please specify a valid transfer type.",
+      "default_post_process": false,
+      "required_fields": {}
+    },
+    "tools": []
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/weather_api/skill.py",
+    "class_name": "WeatherApiSkill",
+    "skill_name": "weather_api",
+    "skill_description": "Get current weather information from WeatherAPI.com",
+    "skill_version": "1.0.0",
+    "supports_multiple_instances": false,
+    "required_packages": [],
+    "required_env_vars": [],
+    "class_docstring": "Skill for getting weather information from WeatherAPI.com.\n\nProvides current weather data with configurable temperature units and\nTTS-optimized natural language responses.\n\nConfiguration:\n- tool_name: Custom name for the generated SWAIG function\n- api_key: WeatherAPI.com API key\n- temperature_unit: \"fahrenheit\" or \"celsius\" for temperature display\n\nExample:\n    agent.add_skill(\"weather_api\", {\n        \"tool_name\": \"get_weather\",\n        \"api_key\": \"your_weatherapi_key\",\n        \"temperature_unit\": \"fahrenheit\"\n    })",
+    "parameters": {},
+    "required_params": [],
+    "optional_params": {},
+    "tools": []
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/web_search/skill.py",
+    "class_name": "WebSearchSkill",
+    "skill_name": "web_search",
+    "skill_description": "Search the web for information using Google Custom Search API",
+    "skill_version": "1.0.0",
+    "supports_multiple_instances": true,
+    "required_packages": [
+      "bs4",
+      "requests"
+    ],
+    "required_env_vars": [],
+    "class_docstring": "Web search capability using Google Custom Search API",
+    "parameters": {
+      "search_engine_id": {
+        "name": "search_engine_id",
+        "required": true,
+        "type": "string",
+        "description": "Search engine identifier"
+      },
+      "num_results": {
+        "name": "num_results",
+        "required": false,
+        "type": "integer",
+        "description": "Number of search results to return",
+        "default": 1
+      },
+      "api_key": {
+        "name": "api_key",
+        "required": true,
+        "type": "string",
+        "description": "API key for authentication"
+      },
+      "delay": {
+        "name": "delay",
+        "required": false,
+        "type": "integer",
+        "description": "Delay between requests in seconds",
+        "default": 0
+      },
+      "tool_name": {
+        "name": "tool_name",
+        "required": false,
+        "type": "string",
+        "description": "Name of the tool/function to register",
+        "default": "web_search"
+      },
+      "no_results_message": {
+        "name": "no_results_message",
+        "required": false,
+        "type": "string",
+        "description": "Message to display when no results are found",
+        "default": "I couldn't find any results for '{query}'. This might be due to a very specific query or temporary issues. Try rephrasing your search or asking about a different topic."
+      },
+      "max_content_length": {
+        "name": "max_content_length",
+        "required": false,
+        "type": "integer",
+        "description": "Maximum content length to extract",
+        "default": 2000
+      }
+    },
+    "required_params": [
+      "search_engine_id",
+      "api_key"
+    ],
+    "optional_params": {
+      "num_results": 1,
+      "delay": 0,
+      "max_content_length": 2000,
+      "no_results_message": "I couldn't find any results for '{query}'. This might be due to a very specific query or temporary issues. Try rephrasing your search or asking about a different topic.",
+      "tool_name": "web_search"
+    },
+    "tools": []
+  },
+  {
+    "file": "/home/devuser/src/signalwire-agent-builder/signalwire-agents/signalwire_agents/skills/wikipedia_search/skill.py",
+    "class_name": "WikipediaSearchSkill",
+    "skill_name": "wikipedia_search",
+    "skill_description": "Search Wikipedia for information about a topic and get article summaries",
+    "skill_version": "1.0.0",
+    "supports_multiple_instances": false,
+    "required_packages": [
+      "requests"
+    ],
+    "required_env_vars": [],
+    "class_docstring": "Skill for searching Wikipedia articles and retrieving content.\n\nThis skill uses the Wikipedia API to search for articles and retrieve\ntheir introductory content, similar to getting a summary of a topic.",
+    "parameters": {
+      "num_results": {
+        "name": "num_results",
+        "required": false,
+        "type": "integer",
+        "description": "Ensure at least 1 result",
+        "default": 1
+      },
+      "no_results_message": {
+        "name": "no_results_message",
+        "required": false,
+        "type": "string",
+        "description": "Message to display when no results are found",
+        "default": null
+      }
+    },
+    "required_params": [],
+    "optional_params": {
+      "num_results": 1,
+      "no_results_message": null
+    },
+    "tools": [
+      {
+        "parameters": {
+          "query": {
+            "name": "query",
+            "type": "string",
+            "description": "The search term or topic to look up on Wikipedia"
+          }
+        },
+        "name": "search_wiki",
+        "description": "Search Wikipedia for information about a topic and get article summaries"
+      }
+    ]
+  }
+]

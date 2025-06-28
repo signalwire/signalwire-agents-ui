@@ -20,7 +20,7 @@ async def get_current_user(
     token = credentials.credentials
     
     try:
-        payload = jwt.decode(token, app_settings.JWT_SECRET_KEY, algorithms=["HS256"])
+        payload = jwt.decode(token, app_settings.jwt_secret, algorithms=["HS256"])
         token_id: str = payload.get("token_id")
         token_name: str = payload.get("token_name")
         

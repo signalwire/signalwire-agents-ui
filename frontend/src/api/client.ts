@@ -27,8 +27,11 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     if (error.response?.status === 401) {
-      // Clear token and redirect to login
+      // Clear auth data and redirect to login
       localStorage.removeItem('auth_token')
+      localStorage.removeItem('token_name')
+      localStorage.removeItem('login_timestamp')
+      localStorage.removeItem('remember_me')
       window.location.href = '/login'
     }
     return Promise.reject(error)

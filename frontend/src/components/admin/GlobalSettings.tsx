@@ -16,7 +16,7 @@ export function GlobalSettings() {
     queryFn: settingsApi.get,
   })
 
-  const [localSettings, setLocalSettings] = useState(settings || {})
+  const [localSettings, setLocalSettings] = useState<any>(settings || {})
 
   const updateMutation = useMutation({
     mutationFn: settingsApi.update,
@@ -51,7 +51,7 @@ export function GlobalSettings() {
       {/* Organization Settings */}
       <Card>
         <CardHeader>
-          <CardTitle>Organization Settings</CardTitle>
+          <CardTitle className="text-heading-secondary">Organization Settings</CardTitle>
           <CardDescription>
             Configure organization-wide settings and defaults
           </CardDescription>
@@ -89,7 +89,7 @@ export function GlobalSettings() {
       {/* Default Agent Settings */}
       <Card>
         <CardHeader>
-          <CardTitle>Default Agent Settings</CardTitle>
+          <CardTitle className="text-heading-secondary">Default Agent Settings</CardTitle>
           <CardDescription>
             Configure default values for new agents
           </CardDescription>
@@ -138,7 +138,7 @@ export function GlobalSettings() {
       {/* Security Settings */}
       <Card>
         <CardHeader>
-          <CardTitle>Security Settings</CardTitle>
+          <CardTitle className="text-heading-secondary">Security Settings</CardTitle>
           <CardDescription>
             Configure security and authentication options
           </CardDescription>
@@ -154,7 +154,7 @@ export function GlobalSettings() {
             <Switch
               id="enforce-basic-auth"
               checked={localSettings.enforce_basic_auth || false}
-              onCheckedChange={(checked) => setLocalSettings({
+              onCheckedChange={(checked: boolean) => setLocalSettings({
                 ...localSettings,
                 enforce_basic_auth: checked
               })}
@@ -171,7 +171,7 @@ export function GlobalSettings() {
             <Switch
               id="enable-audit-log"
               checked={localSettings.enable_audit_log || false}
-              onCheckedChange={(checked) => setLocalSettings({
+              onCheckedChange={(checked: boolean) => setLocalSettings({
                 ...localSettings,
                 enable_audit_log: checked
               })}

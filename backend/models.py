@@ -57,5 +57,5 @@ class AuditLog(Base):
     user_id = Column(String, nullable=False)
     action = Column(String, nullable=False)
     description = Column(Text, nullable=False)
-    metadata = Column(JSON)
+    metadata_ = Column("metadata", JSON)
     timestamp = Column(DateTime, default=datetime.utcnow)

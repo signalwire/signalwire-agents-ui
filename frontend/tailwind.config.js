@@ -51,6 +51,16 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        nav: {
+          active: "hsl(var(--nav-active))",
+          hover: "hsl(var(--nav-hover))",
+        },
+        heading: {
+          DEFAULT: "hsl(var(--heading))",
+          primary: "hsl(var(--heading-primary))",
+          secondary: "hsl(var(--heading-secondary))",
+          card: "hsl(var(--heading-card))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

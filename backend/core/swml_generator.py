@@ -1,66 +1,359 @@
-"""SWML document generation."""
+"""SWML document generation using SignalWire Agents SDK."""
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
-import jwt
+import logging
+import os
 
-from .config import settings, get_swaig_handler_url
+from signalwire_agents import AgentBase
+from .config import settings
 from .security import create_skill_jwt_token
 
+logger = logging.getLogger(__name__)
 
-def build_pom_from_sections(sections: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Build a Prompt Object Model from sections configuration."""
-    pom = []
+
+def generate_swml(agent_config: Dict[str, Any], agent_id: str) -> Dict[str, Any]:
+    """Generate a SWML document from agent configuration using the SDK."""
     
-    for section in sections:
-        pom_section = {
-            "section": section.get("title", "Section"),
+    # Create an ephemeral agent with the name
+    agent_name = agent_config.get('name', 'Agent')
+    agent = AgentBase(name=agent_name)
+    
+    # Configure voice and language
+    voice = agent_config.get('voice', 'nova')
+    engine = agent_config.get('engine', 'elevenlabs')
+    language = agent_config.get('language', 'en-US')
+    model = agent_config.get('model')
+    
+    # Don't modify the voice - engine is already stored separately
+    
+    # Determine proper language name
+    lang_names = {
+        'en': 'English', 'es': 'Spanish', 'fr': 'French', 'de': 'German',
+        'pt': 'Portuguese', 'it': 'Italian', 'ja': 'Japanese', 'ko': 'Korean',
+        'zh': 'Chinese', 'ru': 'Russian', 'hi': 'Hindi', 'nl': 'Dutch'
+    }
+    base_lang = language.split('-')[0] if language != 'multi' else 'multi'
+    proper_name = lang_names.get(base_lang, 'English')
+    
+    # Add language configuration
+    # The SDK expects individual parameters, not a dict
+    if engine == 'rime' and model:
+        agent.add_language(proper_name, language, voice, engine=engine, model=model)
+    else:
+        agent.add_language(proper_name, language, voice, engine=engine)
+    
+    # Set parameters
+    default_params = {
+        'end_of_speech_timeout': 700,
+        'attention_timeout': 5000
+    }
+    params = {**default_params, **agent_config.get('params', {})}
+    
+    # Set parameters individually to avoid issues
+    for key, value in params.items():
+        agent.set_param(key, value)
+    
+    # Configure prompt sections
+    prompt_sections = agent_config.get('prompt_sections', [])
+    for section in prompt_sections:
+        title = section.get('title', 'Section')
+        body = section.get('body', '')
+        bullets = section.get('bullets', [])
+        
+        # Use the correct method: prompt_add_section
+        agent.prompt_add_section(
+            title=title,
+            body=body,
+            bullets=bullets if bullets else None
+        )
+    
+    # Add hints if provided
+    if hints := agent_config.get('hints'):
+        agent.add_hints(hints)
+    
+    # Configure SWAIG webhook URL
+    # The SDK will handle auth via basic auth in the SWML
+    agent.set_web_hook_url(f"https://{settings.hostname}:{settings.port}/api/swaig/function")
+    
+    # Add skills using the proper SDK method
+    if skills := agent_config.get('skills'):
+        for skill_config in skills:
+            skill_name = skill_config.get('name')
+            skill_params = skill_config.get('params', {})
+            
+            # Create JWT token for this skill
+            token = create_skill_jwt_token(agent_id, skill_name, skill_params)
+            
+            # Add the token to skill params for SWAIG authentication
+            skill_params_with_auth = skill_params.copy()
+            skill_params_with_auth['swaig_fields'] = skill_params.get('swaig_fields', {})
+            skill_params_with_auth['swaig_fields']['meta_data'] = {
+                'token': token
+            }
+            
+            # For skills that can use environment variables, check if params are missing
+            # and env vars are available
+            if skill_name == 'web_search':
+                if not skill_params_with_auth.get('api_key'):
+                    api_key = os.getenv('GOOGLE_API_KEY')
+                    if api_key:
+                        skill_params_with_auth['api_key'] = api_key
+                        logger.info("Using GOOGLE_API_KEY from environment")
+                if not skill_params_with_auth.get('search_engine_id'):
+                    search_engine_id = os.getenv('GOOGLE_SEARCH_ENGINE_ID')
+                    if search_engine_id:
+                        skill_params_with_auth['search_engine_id'] = search_engine_id
+                        logger.info("Using GOOGLE_SEARCH_ENGINE_ID from environment")
+            
+            elif skill_name == 'weather_api':
+                if not skill_params_with_auth.get('api_key'):
+                    api_key = os.getenv('OPENWEATHERMAP_API_KEY')
+                    if api_key:
+                        skill_params_with_auth['api_key'] = api_key
+                        logger.info("Using OPENWEATHERMAP_API_KEY from environment")
+            
+            try:
+                # Use the SDK's proper add_skill method
+                # The SDK will handle skill loading and configuration
+                agent.add_skill(skill_name, skill_params_with_auth)
+                logger.info(f"Successfully added skill: {skill_name}")
+                
+            except Exception as e:
+                # Log the error but continue - some skills might not be available
+                logger.warning(f"Could not add skill {skill_name}: {e}")
+                # Don't fall back to manual registration - let the SDK handle it
+    
+    # Configure post-prompt if provided
+    if post_prompt := agent_config.get('post_prompt'):
+        agent.set_post_prompt(post_prompt)
+        if post_prompt_url := agent_config.get('post_prompt_url'):
+            agent.set_post_prompt_url(post_prompt_url)
+        else:
+            # Use generic handler
+            agent.set_post_prompt_url(f"https://{settings.hostname}:{settings.port}/api/post-prompt/{agent_id}")
+    
+    # Get the SWML document from the agent
+    try:
+        # The agent needs to be prepared for rendering
+        # This happens automatically when serving, but we need to trigger it manually
+        agent._render_swml()
+        
+        # Get the rendered SWML as JSON string
+        swml_json = agent.render_document()
+        
+        # Parse the JSON string to a dictionary
+        import json
+        swml_doc = json.loads(swml_json)
+        
+        # Override webhook URLs in SWAIG functions to use our endpoint with proper auth
+        if 'sections' in swml_doc and 'main' in swml_doc['sections']:
+            for section in swml_doc['sections']['main']:
+                if 'ai' in section and 'SWAIG' in section['ai'] and 'functions' in section['ai']['SWAIG']:
+                    for function in section['ai']['SWAIG']['functions']:
+                        # Replace the SDK's webhook URL with our own
+                        function['web_hook_url'] = f"https://{settings.hostname}:{settings.port}/api/swaig/function"
+                        
+                        # Add auth token to meta_data if not present
+                        if 'meta_data' not in function:
+                            function['meta_data'] = {}
+                        
+                        # Extract skill name from function or use general token
+                        skill_name = None
+                        for skill_config in agent_config.get('skills', []):
+                            # Try to match by function name or tool name
+                            if skill_config.get('name'):
+                                skill_name = skill_config['name']
+                                skill_params = skill_config.get('params', {})
+                                # Create skill-specific token
+                                token = create_skill_jwt_token(agent_id, skill_name, skill_params)
+                                function['meta_data']['token'] = token
+                                break
+                        
+                        if not skill_name:
+                            # Use general token if no specific skill found
+                            function['meta_data']['token'] = create_skill_jwt_token(agent_id, "general", {})
+        
+        # Return the modified SWML document
+        return swml_doc
+        
+    except Exception as e:
+        logger.error(f"Error generating SWML from agent: {e}")
+        # Fall back to manual generation
+        return generate_swml_manual(agent_config, agent_id)
+
+
+def add_manual_skill_functions(agent: AgentBase, skill_name: str, token: str):
+    """Manually add skill functions when dynamic loading fails."""
+    
+    # Define manual function mappings
+    if skill_name == "datetime":
+        agent.register_swaig_function(
+            name="get_current_time",
+            description="Get the current time, optionally in a specific timezone",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "timezone": {
+                        "type": "string",
+                        "description": "Timezone name (e.g., 'America/New_York', 'Europe/London'). Defaults to UTC."
+                    }
+                }
+            },
+            meta_data={"token": token}
+        )
+        agent.register_swaig_function(
+            name="get_current_date",
+            description="Get the current date",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "timezone": {
+                        "type": "string",
+                        "description": "Timezone name for the date. Defaults to UTC."
+                    }
+                }
+            },
+            meta_data={"token": token}
+        )
+    elif skill_name == "math":
+        agent.register_swaig_function(
+            name="calculate",
+            description="Perform mathematical calculations",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "expression": {
+                        "type": "string",
+                        "description": "Mathematical expression to evaluate"
+                    }
+                },
+                "required": ["expression"]
+            },
+            meta_data={"token": token}
+        )
+    elif skill_name == "web_search":
+        agent.register_swaig_function(
+            name="web_search",
+            description="Search the web for information",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query"
+                    }
+                },
+                "required": ["query"]
+            },
+            meta_data={"token": token}
+        )
+    elif skill_name == "weather":
+        agent.register_swaig_function(
+            name="get_weather",
+            description="Get weather information for a location",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "City name or coordinates"
+                    }
+                },
+                "required": ["location"]
+            },
+            meta_data={"token": token}
+        )
+
+
+def generate_swml_manual(agent_config: Dict[str, Any], agent_id: str) -> Dict[str, Any]:
+    """Manual SWML generation as fallback."""
+    
+    # Build prompt sections
+    prompt_content = []
+    for section in agent_config.get('prompt_sections', []):
+        section_obj = {
+            "section": section.get('title', 'Section'),
             "content": []
         }
         
-        # Add body text if present
-        if body := section.get("body"):
-            pom_section["content"].append({
+        if body := section.get('body'):
+            section_obj["content"].append({
                 "type": "text",
                 "text": body
             })
         
-        # Add bullets if present
-        if bullets := section.get("bullets"):
-            pom_section["content"].append({
+        if bullets := section.get('bullets'):
+            section_obj["content"].append({
                 "type": "unordered_list",
                 "items": bullets
             })
         
-        pom.append(pom_section)
+        prompt_content.append(section_obj)
     
-    return pom
-
-
-def generate_skill_functions(skills: List[Dict[str, Any]], agent_id: str) -> List[Dict[str, Any]]:
-    """Generate SWAIG function definitions for configured skills."""
-    functions = []
+    # Build AI configuration
+    voice = agent_config.get('voice', 'nova')
+    engine = agent_config.get('engine', 'elevenlabs')
     
-    for skill_config in skills:
-        skill_name = skill_config.get("name")
-        skill_params = skill_config.get("params", {})
-        
-        # Get skill metadata from SDK
-        try:
-            from signalwire_agents.skills.registry import skill_registry
-            skill_info = skill_registry.get_skill_info(skill_name)
-            
-            if not skill_info:
-                continue
-                
-            # Get the registered functions from the skill
-            # This is a simplified version - in reality we'd need to instantiate the skill
-            # For now, we'll create standard function entries based on common patterns
-            
-            # Generate JWT token for this skill
+    # Don't modify the voice - engine is already stored separately
+    
+    ai_config = {
+        "voice": voice,
+        "prompt": {
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "content": prompt_content
+        }
+    }
+    
+    # Add language configuration
+    language = agent_config.get('language', 'en-US')
+    lang_names = {
+        'en': 'English', 'es': 'Spanish', 'fr': 'French', 'de': 'German',
+        'pt': 'Portuguese', 'it': 'Italian', 'ja': 'Japanese', 'ko': 'Korean',
+        'zh': 'Chinese', 'ru': 'Russian', 'hi': 'Hindi', 'nl': 'Dutch'
+    }
+    base_lang = language.split('-')[0] if language != 'multi' else 'multi'
+    proper_name = lang_names.get(base_lang, 'English')
+    
+    language_config = {
+        "name": proper_name,
+        "code": language,
+        "engine": engine,
+        "voice": voice
+    }
+    
+    if engine == 'rime' and (model := agent_config.get('model')):
+        language_config["model"] = model
+    
+    ai_config["languages"] = [language_config]
+    
+    # Add hints
+    if hints := agent_config.get('hints'):
+        ai_config["hints"] = hints
+    
+    # Add parameters
+    default_params = {
+        "end_of_speech_timeout": 700,
+        "attention_timeout": 5000
+    }
+    ai_config["params"] = {**default_params, **agent_config.get('params', {})}
+    
+    # Build SWAIG configuration
+    swaig_config = {
+        "defaults": {
+            "web_hook_url": f"https://{settings.hostname}:{settings.port}/api/swaig/function"
+        }
+    }
+    
+    # Add skills manually
+    if skills := agent_config.get('skills'):
+        functions = []
+        for skill_config in skills:
+            skill_name = skill_config.get('name')
+            skill_params = skill_config.get('params', {})
             token = create_skill_jwt_token(agent_id, skill_name, skill_params)
             
-            # Add metadata with token to each function
-            # Most skills register functions with predictable names
+            # Add functions based on skill type
             if skill_name == "datetime":
                 functions.extend([
                     {
@@ -124,77 +417,37 @@ def generate_skill_functions(skills: List[Dict[str, Any]], agent_id: str) -> Lis
                     },
                     "meta_data": {"token": token}
                 })
-            # Add more skill patterns as needed
-            
-        except ImportError:
-            # If SDK not available, skip
-            pass
-    
-    return functions
-
-
-def generate_swml(agent_config: Dict[str, Any], agent_id: str) -> Dict[str, Any]:
-    """Generate a SWML document from agent configuration."""
-    # Check if agent has basic auth configured
-    basic_auth_user = agent_config.get("basic_auth_user")
-    basic_auth_password = agent_config.get("basic_auth_password")
-    # Build the main AI configuration
-    ai_config = {
-        "voice": agent_config.get("voice", "nova"),
-        "prompt": {
-            "temperature": 0.7,
-            "top_p": 0.9,
-            "content": build_pom_from_sections(agent_config.get("prompt_sections", []))
-        }
-    }
-    
-    # Add language configuration
-    language = agent_config.get("language", "en-US")
-    ai_config["languages"] = [{
-        "name": "English",
-        "code": language,
-        "voice": agent_config.get("voice", "nova")
-    }]
-    
-    # Add hints if provided
-    if hints := agent_config.get("hints"):
-        ai_config["hints"] = hints
-    
-    # Add parameters
-    default_params = {
-        "end_of_speech_timeout": 2000,
-        "attention_timeout": 20000,
-        "background_file_volume": -20,
-        "ai_model": "gpt-4o-mini"
-    }
-    ai_config["params"] = {**default_params, **agent_config.get("params", {})}
-    
-    # Build SWAIG configuration
-    swaig_config = {
-        "defaults": {
-            "web_hook_url": get_swaig_handler_url()
-        }
-    }
-    
-    # Add skill functions
-    if skills := agent_config.get("skills"):
-        functions = generate_skill_functions(skills, agent_id)
+            elif skill_name == "weather":
+                functions.append({
+                    "function": "get_weather",
+                    "description": "Get weather information for a location",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "location": {
+                                "type": "string",
+                                "description": "City name or coordinates"
+                            }
+                        },
+                        "required": ["location"]
+                    },
+                    "meta_data": {"token": token}
+                })
+        
         if functions:
             swaig_config["functions"] = functions
     
     ai_config["SWAIG"] = swaig_config
     
-    # Add post-prompt if configured
-    if post_prompt := agent_config.get("post_prompt"):
+    # Add post-prompt
+    if post_prompt := agent_config.get('post_prompt'):
         ai_config["post_prompt"] = post_prompt
-        if post_prompt_url := agent_config.get("post_prompt_url"):
+        if post_prompt_url := agent_config.get('post_prompt_url'):
             ai_config["post_prompt_url"] = post_prompt_url
         else:
-            # Use generic handler
             ai_config["post_prompt_url"] = f"https://{settings.hostname}:{settings.port}/api/post-prompt/{agent_id}"
     
-    # Build the complete SWML document
-    swml = {
+    return {
         "version": "1.0",
         "sections": {
             "main": [
@@ -203,5 +456,3 @@ def generate_swml(agent_config: Dict[str, Any], agent_id: str) -> Dict[str, Any]
             ]
         }
     }
-    
-    return swml

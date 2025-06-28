@@ -119,7 +119,7 @@ export function TokenManagement() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>API Tokens</CardTitle>
+              <CardTitle className="text-heading-secondary">API Tokens</CardTitle>
               <CardDescription>
                 Manage JWT tokens for skill authentication
               </CardDescription>

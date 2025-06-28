@@ -10,12 +10,55 @@ import logging
 
 from .config import settings
 from .database import get_db
-from .models import Token, AuditLog
+from ..models import Token
 
 logger = logging.getLogger(__name__)
 
 # Security scheme
 security = HTTPBearer()
+
+
+async def verify_jwt_token(
+    credentials: HTTPAuthorizationCredentials = Security(security),
+    db: AsyncSession = Depends(get_db)
+) -> Dict[str, Any]:
+    """Verify JWT bearer token and return token data."""
+    token = credentials.credentials
+    
+    try:
+        # Decode JWT token
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
+        token_id = payload.get("token_id")
+        
+        if not token_id:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Verify the token still exists and is active in DB
+        result = await db.execute(
+            select(Token).where(Token.id == token_id, Token.is_active == True)
+        )
+        token_obj = result.scalar_one_or_none()
+        
+        if not token_obj:
+            raise HTTPException(
+                status_code=401,
+                detail="Token has been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Return both payload and token object
+        return {"payload": payload, "token": token_obj}
+        
+    except JWTError:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 async def verify_token(
@@ -27,7 +70,7 @@ async def verify_token(
     
     # Query database for token
     result = await db.execute(
-        select(Token).where(Token.token == token, Token.active == True)
+        select(Token).where(Token.token == token, Token.is_active == True)
     )
     token_obj = result.scalar_one_or_none()
     
@@ -41,23 +84,25 @@ async def verify_token(
     return token_obj
 
 
-def create_jwt_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+def create_jwt_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None, remember_me: bool = False) -> str:
     """Create a JWT token for internal use."""
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
+    elif remember_me:
+        expire = datetime.utcnow() + timedelta(days=30)  # 30 days for remember me
     else:
-        expire = datetime.utcnow() + timedelta(hours=settings.jwt_expiration_hours)
+        expire = datetime.utcnow() + timedelta(days=7)  # Default 7 days
     
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    encoded_jwt = jwt.encode(to_encode, settings.jwt_secret, algorithm="HS256")
     return encoded_jwt
 
 
 def decode_jwt_token(token: str) -> Dict[str, Any]:
     """Decode and validate a JWT token."""
     try:
-        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
         return payload
     except JWTError:
         raise HTTPException(
@@ -81,35 +126,3 @@ def create_skill_jwt_token(agent_id: str, skill_name: str, skill_params: Dict[st
         settings.signalwire_jwt_secret,
         algorithm="HS256"
     )
-
-
-async def create_audit_log(
-    db: AsyncSession,
-    action: str,
-    entity_type: str,
-    entity_id: str,
-    changes: Optional[Dict[str, Any]] = None,
-    metadata: Optional[Dict[str, Any]] = None,
-    auth_token: Optional[str] = None
-) -> None:
-    """Create an audit log entry."""
-    audit_entry = AuditLog(
-        action=action,
-        entity_type=entity_type,
-        entity_id=entity_id,
-        changes=changes,
-        metadata=metadata,
-        auth_token=auth_token
-    )
-    db.add(audit_entry)
-    # Note: commit is handled by the session dependency
-
-
-def get_request_metadata(request: Request) -> Dict[str, Any]:
-    """Extract metadata from request for audit logging."""
-    return {
-        "ip": request.client.host if request.client else None,
-        "user_agent": request.headers.get("user-agent"),
-        "method": request.method,
-        "path": str(request.url.path)
-    }

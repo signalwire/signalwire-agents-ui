@@ -19,7 +19,7 @@ services:
 
   app:
     build:
-      context: ..
+      context: .
       dockerfile: docker/Dockerfile
     restart: unless-stopped
     ports:
@@ -34,7 +34,6 @@ services:
       RATE_LIMIT_SWML: ${RATE_LIMIT_SWML:-1000}
       SIGNALWIRE_JWT_SECRET: ${SIGNALWIRE_JWT_SECRET:-change-this-for-production}
     volumes:
-      - /certs:/certs:ro
       - app_logs:/app/logs
     depends_on:
       db:

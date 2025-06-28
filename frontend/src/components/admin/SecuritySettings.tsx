@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Shield, Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -68,7 +68,7 @@ export function SecuritySettings() {
           {/* Global Basic Auth */}
           <Card>
             <CardHeader>
-              <CardTitle>Global Basic Authentication</CardTitle>
+              <CardTitle className="text-heading-secondary">Global Basic Authentication</CardTitle>
               <CardDescription>
                 Set a global username and password for all SWML endpoints
               </CardDescription>
@@ -91,7 +91,7 @@ export function SecuritySettings() {
                 </div>
                 <Switch
                   checked={globalAuth.enabled}
-                  onCheckedChange={(checked) => setGlobalAuth({ ...globalAuth, enabled: checked })}
+                  onCheckedChange={(checked: boolean) => setGlobalAuth({ ...globalAuth, enabled: checked })}
                 />
               </div>
 
@@ -167,7 +167,7 @@ export function SecuritySettings() {
         <TabsContent value="cors" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>CORS Configuration</CardTitle>
+              <CardTitle className="text-heading-secondary">CORS Configuration</CardTitle>
               <CardDescription>
                 Configure Cross-Origin Resource Sharing settings
               </CardDescription>
@@ -187,7 +187,7 @@ export function SecuritySettings() {
         <TabsContent value="rate-limiting" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Rate Limiting</CardTitle>
+              <CardTitle className="text-heading-secondary">Rate Limiting</CardTitle>
               <CardDescription>
                 Configure API rate limiting to prevent abuse
               </CardDescription>
