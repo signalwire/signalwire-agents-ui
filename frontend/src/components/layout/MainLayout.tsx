@@ -1,9 +1,11 @@
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
-import { LogOut } from 'lucide-react'
+import { LogOut, HelpCircle } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { useTheme } from '@/components/theme-provider'
+import { useState } from 'react'
+import { HelpModal } from '@/components/help/HelpModal'
 
 interface MainLayoutProps {
   children: React.ReactNode
@@ -13,6 +15,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   const { tokenName, logout } = useAuth()
   const location = useLocation()
   const { theme } = useTheme()
+  const [showHelp, setShowHelp] = useState(false)
 
   // Determine which logo to use based on theme
   const logoSrc = theme === 'dark' || 
@@ -67,6 +70,14 @@ export function MainLayout({ children }: MainLayoutProps) {
               <span className="text-sm text-muted-foreground hidden sm:inline">
                 {tokenName}
               </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowHelp(true)}
+                className="h-9 w-9"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </Button>
               <ThemeToggle />
               <Button
                 variant="ghost"
@@ -86,6 +97,9 @@ export function MainLayout({ children }: MainLayoutProps) {
       <main className="container mx-auto px-4 py-6">
         {children}
       </main>
+      
+      {/* Help Modal */}
+      <HelpModal open={showHelp} onClose={() => setShowHelp(false)} />
     </div>
   )
 }

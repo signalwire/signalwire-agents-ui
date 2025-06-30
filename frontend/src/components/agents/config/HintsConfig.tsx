@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { HelpTooltip } from '@/components/ui/help-tooltip'
+import { helpContent } from '@/lib/helpContent'
 
 export interface HintsConfig {
   simple_hints: string[]
@@ -118,7 +120,10 @@ export function HintsConfig({ open, onClose, config, onChange }: HintsConfigProp
             </Alert>
 
             <div className="space-y-2">
-              <Label htmlFor="simple-hints">Simple Hints</Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="simple-hints">Simple Hints</Label>
+                <HelpTooltip content={helpContent.hints.simple} />
+              </div>
               <Textarea
                 id="simple-hints"
                 value={simpleHintsText}
@@ -144,7 +149,10 @@ export function HintsConfig({ open, onClose, config, onChange }: HintsConfigProp
             {/* Add new pattern hint form */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Add Pattern Hint</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Add Pattern Hint</CardTitle>
+                  <HelpTooltip content={helpContent.hints.pattern} />
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">

@@ -15,6 +15,8 @@ import { toast } from '@/components/ui/use-toast'
 import { api } from '@/lib/api'
 import { Switch } from '@/components/ui/switch'
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
+import { HelpTooltip } from '@/components/ui/help-tooltip'
+import { helpContent } from '@/lib/helpContent'
 
 interface SkillInfo {
   name: string
@@ -154,11 +156,14 @@ export function SkillsMarketplacePage() {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-heading-primary">Skills Marketplace</h1>
-            <p className="text-muted-foreground">
-              Browse and manage skills for your AI agents
-            </p>
+          <div className="flex items-center gap-3">
+            <div>
+              <h1 className="text-2xl font-bold text-heading-primary">Skills Marketplace</h1>
+              <p className="text-muted-foreground">
+                Browse and manage skills for your AI agents
+              </p>
+            </div>
+            <HelpTooltip content={helpContent.marketplace.overview} />
           </div>
           <div className="flex items-center gap-2">
             <Button

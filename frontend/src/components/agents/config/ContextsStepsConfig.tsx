@@ -12,6 +12,8 @@ import { Switch } from '@/components/ui/switch'
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { HelpTooltip } from '@/components/ui/help-tooltip'
+import { helpContent } from '@/lib/helpContent'
 
 export interface ContextSection {
   title: string
@@ -354,7 +356,10 @@ export function ContextsStepsConfig({
                         </CardHeader>
                         <CardContent className="space-y-4">
                           <div className="space-y-2">
-                            <Label htmlFor="context-name">Context Name</Label>
+                            <div className="flex items-center gap-2">
+                              <Label htmlFor="context-name">Context Name</Label>
+                              <HelpTooltip content={helpContent.contexts.overview} />
+                            </div>
                             <Input
                               id="context-name"
                               value={currentContext.name}
@@ -365,7 +370,10 @@ export function ContextsStepsConfig({
 
                           <div className="flex items-center justify-between">
                             <div className="space-y-0.5">
-                              <Label htmlFor="isolated">Isolated Context</Label>
+                              <div className="flex items-center gap-2">
+                                <Label htmlFor="isolated">Isolated Context</Label>
+                                <HelpTooltip content={helpContent.contexts.isolated} />
+                              </div>
                               <p className="text-sm text-muted-foreground">
                                 Prevents access to functions from other contexts
                               </p>
@@ -598,7 +606,10 @@ export function ContextsStepsConfig({
 
                                     {/* Step Criteria */}
                                     <div className="space-y-2">
-                                      <Label htmlFor={`criteria-${step.id}`}>Completion Criteria</Label>
+                                      <div className="flex items-center gap-2">
+                                        <Label htmlFor={`criteria-${step.id}`}>Completion Criteria</Label>
+                                        <HelpTooltip content={helpContent.contexts.criteria} />
+                                      </div>
                                       <Textarea
                                         id={`criteria-${step.id}`}
                                         value={step.step_criteria || ''}
@@ -611,7 +622,10 @@ export function ContextsStepsConfig({
                                     {/* Navigation Rules */}
                                     <div className="grid grid-cols-2 gap-4">
                                       <div className="space-y-2">
-                                        <Label>Valid Next Steps</Label>
+                                        <div className="flex items-center gap-2">
+                                          <Label>Valid Next Steps</Label>
+                                          <HelpTooltip content={helpContent.contexts.validSteps} />
+                                        </div>
                                         <Select
                                           value=""
                                           onValueChange={(value) => {
@@ -658,7 +672,10 @@ export function ContextsStepsConfig({
                                       </div>
 
                                       <div className="space-y-2">
-                                        <Label>Valid Contexts</Label>
+                                        <div className="flex items-center gap-2">
+                                          <Label>Valid Contexts</Label>
+                                          <HelpTooltip content={helpContent.contexts.validContexts} />
+                                        </div>
                                         <Select
                                           value=""
                                           onValueChange={(value) => {

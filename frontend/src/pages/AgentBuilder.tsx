@@ -28,6 +28,8 @@ import { NativeFunctionsConfig } from '@/components/agents/config/NativeFunction
 import { RecordingConfig } from '@/components/agents/config/RecordingConfig'
 import { PostPromptConfig } from '@/components/agents/config/PostPromptConfig'
 import { ContextsStepsConfig } from '@/components/agents/config/ContextsStepsConfig'
+import { HelpTooltip } from '@/components/ui/help-tooltip'
+import { helpContent } from '@/lib/helpContent'
 
 interface AgentForm {
   name: string
@@ -460,7 +462,10 @@ export function AgentBuilderPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Agent Name</Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="name">Agent Name</Label>
+                <HelpTooltip content={helpContent.agent.name} />
+              </div>
               <Input
                 id="name"
                 {...register('name', { required: 'Name is required' })}
@@ -471,7 +476,10 @@ export function AgentBuilderPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="description">Description (Optional)</Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="description">Description (Optional)</Label>
+                <HelpTooltip content={helpContent.agent.description} />
+              </div>
               <Textarea
                 id="description"
                 {...register('description')}
@@ -495,7 +503,10 @@ export function AgentBuilderPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="languageConfig">Language Configuration</Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="languageConfig">Language Configuration</Label>
+                <HelpTooltip content={helpContent.agent.language} />
+              </div>
               <Select
                 value={selectedConfigId}
                 onValueChange={(value) => setValue('languageConfigId', value)}
