@@ -126,3 +126,16 @@ def create_skill_jwt_token(agent_id: str, skill_name: str, skill_params: Dict[st
         settings.signalwire_jwt_secret,
         algorithm="HS256"
     )
+
+
+def decode_skill_jwt_token(token: str) -> Dict[str, Any]:
+    """Decode and validate a skill JWT token."""
+    try:
+        payload = jwt.decode(token, settings.signalwire_jwt_secret, algorithms=["HS256"])
+        return payload
+    except JWTError:
+        raise HTTPException(
+            status_code=401,
+            detail="Could not validate skill token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )

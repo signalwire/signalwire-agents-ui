@@ -18,114 +18,32 @@ class NativeFunctionInfo(BaseModel):
     category: str = "general"
 
 
-# TODO: This list should be dynamically loaded from the SignalWire SDK
-# For now, providing a comprehensive list of known native functions
+# These are the actual native functions available in SignalWire AI agents
 AVAILABLE_NATIVE_FUNCTIONS = [
-    # Flow control
+    # Response control
     NativeFunctionInfo(
-        name="wait_for_user",
-        description="Wait for user input before continuing",
-        category="flow"
-    ),
-    NativeFunctionInfo(
-        name="next_step",
-        description="Move to the next step in a structured flow",
-        category="flow"
-    ),
-    NativeFunctionInfo(
-        name="change_context",
-        description="Switch to a different conversation context",
-        category="flow"
-    ),
-    NativeFunctionInfo(
-        name="end_conversation",
-        description="End the conversation gracefully",
-        category="flow"
+        name="adjust_response_latency",
+        description="How long you will wait for the user to stop talking. Slower speed waits longer.",
+        category="control"
     ),
     
-    # Call control
-    NativeFunctionInfo(
-        name="transfer",
-        description="Transfer the call to another number",
-        category="call"
-    ),
-    NativeFunctionInfo(
-        name="end_call",
-        description="End the current call",
-        category="call"
-    ),
-    NativeFunctionInfo(
-        name="hangup",
-        description="Hang up the call immediately",
-        category="call"
-    ),
-    
-    # Audio
-    NativeFunctionInfo(
-        name="play_audio",
-        description="Play an audio file",
-        category="audio"
-    ),
-    NativeFunctionInfo(
-        name="record_audio",
-        description="Record audio from the user",
-        category="audio"
-    ),
-    NativeFunctionInfo(
-        name="play_background_file",
-        description="Play background music or audio",
-        category="audio"
-    ),
-    NativeFunctionInfo(
-        name="stop_background_file",
-        description="Stop playing background audio",
-        category="audio"
-    ),
-    
-    # Utilities
+    # Time functions
     NativeFunctionInfo(
         name="check_time",
-        description="Check the current time",
-        category="utility"
-    ),
-    NativeFunctionInfo(
-        name="get_date",
-        description="Get the current date",
-        category="utility"
-    ),
-    NativeFunctionInfo(
-        name="log_message",
-        description="Log a message for debugging",
+        description="Get the current time.",
         category="utility"
     ),
     
-    # Communication
+    # Wait functions
     NativeFunctionInfo(
-        name="send_sms",
-        description="Send an SMS message",
-        category="communication"
+        name="wait_for_user",
+        description="Use this function only when the user asks you to wait, hold on, or the equivalent. (the AI will wait until you speak again)",
+        category="control"
     ),
     NativeFunctionInfo(
-        name="send_email",
-        description="Send an email",
-        category="communication"
-    ),
-    
-    # User interaction
-    NativeFunctionInfo(
-        name="get_digits",
-        description="Collect DTMF digits from the user",
-        category="interaction"
-    ),
-    NativeFunctionInfo(
-        name="get_speech",
-        description="Collect speech input from the user",
-        category="interaction"
-    ),
-    NativeFunctionInfo(
-        name="pause",
-        description="Pause for a specified duration",
-        category="interaction"
+        name="wait_seconds",
+        description="Wait a number of seconds then resume",
+        category="control"
     ),
 ]
 

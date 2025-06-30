@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, Plus, Trash2, Settings, Loader2, Package2, ShoppingCart } from 'lucide-react'
+import { Search, Plus, Trash2, Settings, Loader2, Package2, ShoppingCart, Play } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { api } from '@/lib/api'
 import { toast } from '@/components/ui/use-toast'
+import { TestSkillDialog } from './TestSkillDialog'
 
 interface Skill {
   name: string
@@ -25,6 +26,11 @@ interface SkillDefinition {
     required?: boolean
     default?: any
     description: string
+    hidden?: boolean
+    env_var?: string
+    min?: number
+    max?: number
+    enum?: string[]
   }>
   functions: string[]
 }
@@ -74,6 +80,7 @@ export function SkillsSelector({ open, onClose, selectedSkills, onChange }: Skil
   const [localSkills, setLocalSkills] = useState<Skill[]>(selectedSkills)
   const [searchTerm, setSearchTerm] = useState('')
   const [configuringSkill, setConfiguringSkill] = useState<{ skill: Skill; index: number } | null>(null)
+  const [testingSkill, setTestingSkill] = useState<{ skill: Skill; index: number } | null>(null)
   const [addingSkill, setAddingSkill] = useState<string | null>(null)
   const [availableSkills, setAvailableSkills] = useState<SkillDefinition[]>(FALLBACK_SKILLS)
   const [isLoading, setIsLoading] = useState(true)
@@ -244,6 +251,15 @@ export function SkillsSelector({ open, onClose, selectedSkills, onChange }: Skil
                                   )}
                                 </div>
                                 <div className="flex gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setTestingSkill({ skill, index })}
+                                  >
+                                    <Play className="h-4 w-4 mr-1" />
+                                    Test
+                                  </Button>
                                   {hasParams && (
                                     <Button
                                       type="button"
@@ -275,15 +291,14 @@ export function SkillsSelector({ open, onClose, selectedSkills, onChange }: Skil
                                   <div className="space-y-1">
                                     {Object.entries(skill.params).map(([key, value]) => {
                                       const paramDef = skillDef?.params.find(p => p.name === key)
+                                      const displayValue = paramDef?.hidden ? '••••••••' : String(value)
                                       return (
                                         <div key={key} className="flex justify-between text-xs">
                                           <span className="text-muted-foreground">
                                             {paramDef?.description || key}:
                                           </span>
                                           <span className="font-mono">
-                                            {typeof value === 'string' && value.includes('key') 
-                                              ? '••••••••' 
-                                              : String(value)}
+                                            {displayValue}
                                           </span>
                                         </div>
                                       )
@@ -413,6 +428,15 @@ export function SkillsSelector({ open, onClose, selectedSkills, onChange }: Skil
           onClose={() => setAddingSkill(null)}
         />
       )}
+
+      {/* Test Skill Dialog */}
+      {testingSkill && (
+        <TestSkillDialog
+          skillName={testingSkill.skill.name}
+          skillParams={testingSkill.skill.params || {}}
+          onClose={() => setTestingSkill(null)}
+        />
+      )}
     </>
   )
 }
@@ -476,7 +500,7 @@ function SkillConfigDialog({ skill, skillDef, onSave, onClose }: SkillConfigDial
                   {!param.required && <span className="text-muted-foreground ml-1">(optional)</span>}
                 </Label>
                 <Input
-                  type={param.type === 'number' ? 'number' : 'text'}
+                  type={param.type === 'number' ? 'number' : param.hidden ? 'password' : 'text'}
                   value={params[param.name] || ''}
                   onChange={(e) => setParams({
                     ...params,
@@ -484,9 +508,9 @@ function SkillConfigDialog({ skill, skillDef, onSave, onClose }: SkillConfigDial
                   })}
                   placeholder={param.default !== undefined ? `Default: ${param.default}` : 'Enter value'}
                 />
-                {param.type === 'string' && param.name.toLowerCase().includes('key') && (
+                {param.env_var && (
                   <p className="text-xs text-muted-foreground">
-                    Tip: You can also set this as an environment variable
+                    Can also be set via environment variable: <code className="bg-muted px-1 rounded">{param.env_var}</code>
                   </p>
                 )}
               </div>

@@ -1,14 +1,18 @@
-"""SWAIG (SignalWire AI Gateway) handler endpoints."""
+"""SWAIG (SignalWire AI Gateway) handler endpoints using ephemeral agents."""
 from fastapi import APIRouter, HTTPException, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
 import logging
-import os
+import json
+import uuid
+import asyncio
+from datetime import datetime
 
 from signalwire_agents import AgentBase
+from signalwire_agents.core.function_result import SwaigFunctionResult
 from ..core.database import get_db
-from ..core.security import decode_jwt_token
+from ..core.security import decode_jwt_token, decode_skill_jwt_token
 from ..models import Agent
 
 logger = logging.getLogger(__name__)
@@ -21,6 +25,9 @@ class SWAIGRequest(BaseModel):
     function: str
     argument: Dict[str, Any]
     meta_data: Optional[Dict[str, Any]] = None
+    call_id: Optional[str] = None
+    call: Optional[Dict[str, Any]] = None
+    vars: Optional[Dict[str, Any]] = None
     
     
 class SWAIGResponse(BaseModel):
@@ -29,80 +36,121 @@ class SWAIGResponse(BaseModel):
     action: Optional[List[Dict[str, Any]]] = None
 
 
+def create_mock_post_data(request: SWAIGRequest) -> Dict[str, Any]:
+    """Create a mock post_data structure for function execution."""
+    # Use provided call_id or generate one
+    call_id = request.call_id or f"swaig-{uuid.uuid4()}"
+    
+    # Use provided call data or create mock data
+    call_data = request.call or {
+        "call_id": call_id,
+        "node_id": "swaig-node",
+        "segment_id": "swaig-segment",
+        "call_state": "active",
+        "direction": "inbound",
+        "type": "swaig",
+        "from": "+1234567890",
+        "to": "+1234567891",
+        "headers": {},
+        "vars": {}
+    }
+    
+    # Build the post_data structure
+    post_data = {
+        "function": request.function,
+        "argument": {
+            "parsed": [request.argument],
+            "raw": json.dumps(request.argument)
+        },
+        "call_id": call_id,
+        "call": call_data,
+        "vars": request.vars or {}
+    }
+    
+    return post_data
+
+
+async def execute_with_timeout(coro, timeout_seconds=30):
+    """Execute a coroutine with a timeout."""
+    try:
+        return await asyncio.wait_for(coro, timeout=timeout_seconds)
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=f"Function execution timed out after {timeout_seconds} seconds"
+        )
+
+
 @router.post("/function")
 async def handle_swaig_function(
     request: SWAIGRequest,
     req: Request,
     db: AsyncSession = Depends(get_db)
 ) -> SWAIGResponse:
-    """Handle SWAIG function calls from SignalWire using the SDK."""
+    """Handle SWAIG function calls from SignalWire using ephemeral agents."""
     
-    # Extract auth from request headers (Basic auth)
+    # Extract authentication
+    agent_id = None
+    skill_name = None
+    skill_params = {}
+    
+    # Try Basic auth first
     auth_header = req.headers.get("authorization", "")
     if auth_header.startswith("Basic "):
         import base64
         try:
-            # Decode basic auth
             encoded = auth_header.split(" ")[1]
             decoded = base64.b64decode(encoded).decode()
             username, token = decoded.split(":", 1)
             
-            # Decode the JWT token to get agent_id, skill_name, and skill_params
-            token_data = decode_jwt_token(token)
+            token_data = decode_skill_jwt_token(token)
             agent_id = token_data.get("agent_id")
             skill_name = token_data.get("skill_name", "general")
             skill_params = token_data.get("skill_params", {})
             
         except Exception as e:
             logger.error(f"Failed to decode auth header: {e}")
-            # Fall back to meta_data token
-            if not request.meta_data or "token" not in request.meta_data:
-                raise HTTPException(status_code=401, detail="Missing authentication token")
-            
-            try:
-                token_data = decode_jwt_token(request.meta_data["token"])
-                agent_id = token_data.get("agent_id")
-                skill_name = token_data.get("skill_name")
-                skill_params = token_data.get("skill_params", {})
-            except Exception as e:
-                logger.error(f"Failed to decode SWAIG token: {e}")
-                raise HTTPException(status_code=401, detail="Invalid token")
-    else:
-        # No basic auth, try meta_data
-        if not request.meta_data or "token" not in request.meta_data:
-            raise HTTPException(status_code=401, detail="Missing authentication token")
-        
+            auth_header = None  # Fall through to meta_data
+    
+    # Fall back to meta_data token if no Basic auth
+    if not agent_id and request.meta_data and "token" in request.meta_data:
         try:
-            token_data = decode_jwt_token(request.meta_data["token"])
+            token_data = decode_skill_jwt_token(request.meta_data["token"])
             agent_id = token_data.get("agent_id")
-            skill_name = token_data.get("skill_name")
+            skill_name = token_data.get("skill_name", "general")
             skill_params = token_data.get("skill_params", {})
         except Exception as e:
-            logger.error(f"Failed to decode SWAIG token: {e}")
+            logger.error(f"Failed to decode SWAIG token: {e}", exc_info=True)
             raise HTTPException(status_code=401, detail="Invalid token")
     
-    # Log the function call
+    if not agent_id:
+        raise HTTPException(status_code=401, detail="Missing authentication")
+    
     logger.info(f"SWAIG function call: agent={agent_id}, skill={skill_name}, function={request.function}")
     
-    # Create an ephemeral agent and load the skill
+    # Create ephemeral agent
+    ephemeral_agent = None
     try:
-        # Create a minimal agent just for skill execution
-        ephemeral_agent = AgentBase(name=f"SWAIG-{agent_id}")
+        # Create agent instance
+        ephemeral_agent = AgentBase(name=f"swaig-{agent_id}-{uuid.uuid4().hex[:8]}")
         
-        # For "general" auth (non-skill specific), determine skill from function name
+        # For "general" auth, map function to skill
         if skill_name == "general":
-            # Map function names to skills
             function_to_skill = {
+                # Datetime functions
                 "get_current_time": "datetime",
                 "get_current_date": "datetime",
                 "get_time_difference": "datetime",
+                # Math functions
                 "calculate": "math",
                 "solve_equation": "math",
+                # Other skills
                 "tell_joke": "joke",
                 "search_web": "web_search",
+                "web_search": "web_search",
                 "search_wikipedia": "wikipedia_search",
-                "get_weather": "weather_api",
-                "get_forecast": "weather_api",
+                "get_weather": "weather",
+                "get_forecast": "weather",
                 "search_documents": "datasphere",
                 "transfer_call": "swml_transfer",
                 "scrape_url": "spider",
@@ -115,201 +163,194 @@ async def handle_swaig_function(
             
             skill_name = function_to_skill.get(request.function)
             if not skill_name:
-                # Try to find skill by searching loaded skills
-                # This is a fallback that won't work without more context
-                return SWAIGResponse(
-                    response=f"Unknown function: {request.function}"
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Unknown function: {request.function}"
                 )
         
-        # Add the skill with its parameters
+        # Add the skill to the agent
         try:
             ephemeral_agent.add_skill(skill_name, skill_params)
         except Exception as e:
-            logger.warning(f"Failed to load skill {skill_name} with SDK: {e}")
-            # Fall back to manual handling for core skills
-            return handle_skill_manually(skill_name, request.function, request.argument, skill_params)
+            logger.error(f"Failed to add skill {skill_name}: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to load skill: {str(e)}"
+            )
         
-        # Create a mock SWAIG context for the skill
-        class MockSWAIG:
-            def __init__(self, function_name: str, args: Dict[str, Any]):
-                self.function_name = function_name
-                self.args = args
-                self.result = None
-                
-            async def execute(self):
-                """Execute the skill function."""
-                # This would normally be handled by SignalWire's runtime
-                # For now, we'll simulate it
-                pass
+        # Skills are automatically registered when added, no need to initialize
         
-        # Try to find and execute the function
-        # In a real implementation, SignalWire would handle this
-        # For now, we'll use manual handlers as fallback
-        return handle_skill_manually(skill_name, request.function, request.argument, skill_params)
+        # Create mock post_data
+        post_data = create_mock_post_data(request)
         
+        # Execute the function through the agent's handler
+        # Call on_function_call - it might be sync or async
+        result = ephemeral_agent.on_function_call(
+            request.function,
+            request.argument,
+            post_data
+        )
+        
+        # If it's a coroutine, await it with timeout
+        if asyncio.iscoroutine(result):
+            result = await execute_with_timeout(result, timeout_seconds=30)
+        
+        # Convert result to SWAIG response format
+        if isinstance(result, SwaigFunctionResult):
+            # Handle SwaigFunctionResult
+            response = SWAIGResponse(
+                response=result.response,
+                action=result.action
+            )
+        elif isinstance(result, dict):
+            # Handle dict response
+            if "response" in result:
+                response = SWAIGResponse(
+                    response=result["response"],
+                    action=result.get("action")
+                )
+            else:
+                # Wrap dict as response
+                response = SWAIGResponse(response=result)
+        else:
+            # Handle string or other types
+            response = SWAIGResponse(response=str(result))
+        
+        return response
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error handling SWAIG function: {e}")
+        logger.error(f"Error executing SWAIG function: {e}", exc_info=True)
         return SWAIGResponse(
             response=f"Error executing function: {str(e)}"
         )
+    finally:
+        # Clean up the ephemeral agent
+        if ephemeral_agent:
+            try:
+                # AgentBase doesn't have a cleanup method
+                del ephemeral_agent
+            except Exception as e:
+                logger.error(f"Error cleaning up ephemeral agent: {e}")
 
 
-def handle_skill_manually(skill_name: str, function: str, args: Dict[str, Any], params: Dict[str, Any]) -> SWAIGResponse:
-    """Manual fallback handler for skills."""
+@router.post("/test")
+async def test_skill_function(
+    skill_name: str,
+    skill_params: Dict[str, Any],
+    function_name: str,
+    test_args: Dict[str, Any],
+    req: Request
+) -> Dict[str, Any]:
+    """Test a skill function using an ephemeral agent.
     
-    if skill_name == "datetime":
-        return handle_datetime_skill(function, args)
-    elif skill_name == "math":
-        return handle_math_skill(function, args)
-    elif skill_name == "joke":
-        return handle_joke_skill(function, args)
-    elif skill_name == "web_search":
-        return handle_web_search_skill(function, args, params)
-    elif skill_name in ["weather_api", "weather"]:
-        return handle_weather_skill(function, args, params)
-    else:
-        return SWAIGResponse(response=f"Skill {skill_name} not implemented in manual handler")
-
-
-def handle_datetime_skill(function: str, args: Dict[str, Any]) -> SWAIGResponse:
-    """Handle datetime skill functions."""
-    from datetime import datetime
-    import pytz
+    This endpoint is used by the UI to test skill configurations.
+    """
+    # Verify authentication (simplified for testing endpoint)
+    auth_header = req.headers.get("authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing authentication")
     
-    if function == "get_current_time":
-        timezone_name = args.get("timezone", "UTC")
-        try:
-            tz = pytz.timezone(timezone_name)
-            current_time = datetime.now(tz)
-            return SWAIGResponse(
-                response=f"The current time in {timezone_name} is {current_time.strftime('%I:%M %p')}"
-            )
-        except pytz.UnknownTimeZoneError:
-            return SWAIGResponse(
-                response=f"Unknown timezone: {timezone_name}"
-            )
-            
-    elif function == "get_current_date":
-        timezone_name = args.get("timezone", "UTC")
-        try:
-            tz = pytz.timezone(timezone_name)
-            current_date = datetime.now(tz)
-            return SWAIGResponse(
-                response=f"Today's date is {current_date.strftime('%B %d, %Y')}"
-            )
-        except pytz.UnknownTimeZoneError:
-            return SWAIGResponse(
-                response=f"Unknown timezone: {timezone_name}"
-            )
+    logger.info(f"Testing skill function: skill={skill_name}, function={function_name}")
     
-    elif function == "get_time_difference":
-        timezone1 = args.get("timezone1", "UTC")
-        timezone2 = args.get("timezone2", "UTC")
-        try:
-            tz1 = pytz.timezone(timezone1)
-            tz2 = pytz.timezone(timezone2)
-            now = datetime.now()
-            time1 = tz1.localize(now)
-            time2 = tz2.localize(now)
-            diff_hours = (time2.utcoffset() - time1.utcoffset()).total_seconds() / 3600
-            return SWAIGResponse(
-                response=f"The time difference between {timezone1} and {timezone2} is {diff_hours} hours"
-            )
-        except pytz.UnknownTimeZoneError as e:
-            return SWAIGResponse(
-                response=f"Unknown timezone: {e}"
-            )
+    start_time = datetime.now()
+    ephemeral_agent = None
     
-    else:
-        return SWAIGResponse(response=f"Unknown datetime function: {function}")
-
-
-def handle_math_skill(function: str, args: Dict[str, Any]) -> SWAIGResponse:
-    """Handle math skill functions."""
-    if function == "calculate":
-        expression = args.get("expression", "")
-        if not expression:
-            return SWAIGResponse(response="No expression provided")
+    try:
+        # Create ephemeral agent for testing
+        ephemeral_agent = AgentBase(name=f"test-{skill_name}-{uuid.uuid4().hex[:8]}")
         
-        try:
-            # Basic safety check - only allow certain characters
-            allowed_chars = "0123456789+-*/()., "
-            if not all(c in allowed_chars for c in expression):
-                return SWAIGResponse(response="Invalid characters in expression")
-            
-            # Evaluate the expression
-            result = eval(expression)
-            return SWAIGResponse(response=f"The result is {result}")
-        except Exception as e:
-            return SWAIGResponse(response=f"Error calculating: {str(e)}")
-    
-    else:
-        return SWAIGResponse(response=f"Unknown math function: {function}")
-
-
-def handle_joke_skill(function: str, args: Dict[str, Any]) -> SWAIGResponse:
-    """Handle joke skill functions."""
-    if function == "tell_joke":
-        # Simple joke implementation
-        jokes = [
-            "Why don't scientists trust atoms? Because they make up everything!",
-            "Why did the scarecrow win an award? He was outstanding in his field!",
-            "Why don't eggs tell jokes? They'd crack up!",
-            "What do you call a fake noodle? An impasta!",
-            "Why did the bicycle fall over? It was two tired!"
-        ]
-        import random
-        return SWAIGResponse(response=random.choice(jokes))
-    else:
-        return SWAIGResponse(response=f"Unknown joke function: {function}")
-
-
-def handle_web_search_skill(function: str, args: Dict[str, Any], params: Dict[str, Any]) -> SWAIGResponse:
-    """Handle web search skill functions."""
-    if function in ["web_search", "search_web"]:
-        query = args.get("query", "")
-        if not query:
-            return SWAIGResponse(response="No search query provided")
+        # Add the skill
+        success, error = ephemeral_agent.add_skill(skill_name, skill_params)
+        if not success:
+            return {
+                "success": False,
+                "error": f"Failed to load skill: {error}",
+                "execution_time": (datetime.now() - start_time).total_seconds()
+            }
         
-        # Check for required parameters
-        api_key = params.get("api_key") or os.getenv("GOOGLE_API_KEY")
-        search_engine_id = params.get("search_engine_id") or os.getenv("GOOGLE_SEARCH_ENGINE_ID")
+        # Initialize the agent
+        ephemeral_agent.initialize()
         
-        if not api_key or not search_engine_id:
-            return SWAIGResponse(
-                response="Web search is not configured. Please provide API key and search engine ID."
-            )
-        
-        # Here you would implement actual Google Custom Search API call
-        # For now, return a placeholder response
-        return SWAIGResponse(
-            response=f"I would search for '{query}' but the search integration is not yet implemented."
+        # Create mock post_data for testing
+        test_request = SWAIGRequest(
+            function=function_name,
+            argument=test_args,
+            call_id=f"test-{uuid.uuid4()}",
+            call={
+                "call_id": f"test-{uuid.uuid4()}",
+                "node_id": "test-node",
+                "segment_id": "test-segment", 
+                "call_state": "testing",
+                "direction": "inbound",
+                "type": "test",
+                "from": "+1234567890",
+                "to": "+1234567891",
+                "headers": {},
+                "vars": {}
+            },
+            vars={}
         )
-    
-    else:
-        return SWAIGResponse(response=f"Unknown web search function: {function}")
-
-
-def handle_weather_skill(function: str, args: Dict[str, Any], params: Dict[str, Any]) -> SWAIGResponse:
-    """Handle weather skill functions."""
-    if function == "get_weather":
-        location = args.get("location", "")
-        if not location:
-            return SWAIGResponse(response="No location provided")
         
-        # Check for required parameters
-        api_key = params.get("api_key") or os.getenv("OPENWEATHERMAP_API_KEY")
+        post_data = create_mock_post_data(test_request)
         
-        if not api_key:
-            return SWAIGResponse(
-                response="Weather API is not configured. Please provide an API key."
-            )
-        
-        # Here you would implement actual weather API call
-        # For now, return a placeholder response
-        return SWAIGResponse(
-            response=f"I would get weather for '{location}' but the weather integration is not yet implemented."
+        # Execute with timeout
+        result = await execute_with_timeout(
+            ephemeral_agent.on_function_call(
+                function_name=function_name,
+                args=test_args,
+                post_data=post_data
+            ),
+            timeout_seconds=30
         )
-    
-    else:
-        return SWAIGResponse(response=f"Unknown weather function: {function}")
+        
+        # Format the result
+        execution_time = (datetime.now() - start_time).total_seconds()
+        
+        if isinstance(result, SwaigFunctionResult):
+            return {
+                "success": True,
+                "result": {
+                    "action": result.action or "return",
+                    "response": result.response,
+                    "metadata": getattr(result, 'metadata', {})
+                },
+                "execution_time": execution_time
+            }
+        elif isinstance(result, dict):
+            return {
+                "success": True,
+                "result": result,
+                "execution_time": execution_time
+            }
+        else:
+            return {
+                "success": True,
+                "result": {
+                    "action": "return",
+                    "response": str(result)
+                },
+                "execution_time": execution_time
+            }
+            
+    except asyncio.TimeoutError:
+        return {
+            "success": False,
+            "error": "Function execution timed out after 30 seconds",
+            "execution_time": 30.0
+        }
+    except Exception as e:
+        logger.error(f"Error testing skill function: {e}", exc_info=True)
+        return {
+            "success": False,
+            "error": str(e),
+            "execution_time": (datetime.now() - start_time).total_seconds()
+        }
+    finally:
+        # Clean up
+        if ephemeral_agent:
+            try:
+                ephemeral_agent.cleanup()
+            except Exception as e:
+                logger.error(f"Error cleaning up test agent: {e}")
