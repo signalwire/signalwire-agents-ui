@@ -48,3 +48,4 @@ htmlcov/
 *.bak
 *.tmp
 .cache/
+signalwire-agents/
