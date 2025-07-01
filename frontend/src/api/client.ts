@@ -27,12 +27,15 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     if (error.response?.status === 401) {
-      // Clear auth data and redirect to login
-      localStorage.removeItem('auth_token')
-      localStorage.removeItem('token_name')
-      localStorage.removeItem('login_timestamp')
-      localStorage.removeItem('remember_me')
-      window.location.href = '/login'
+      // Don't redirect if we're already on the login page
+      if (!window.location.pathname.includes('/login')) {
+        // Clear auth data and redirect to login
+        localStorage.removeItem('auth_token')
+        localStorage.removeItem('token_name')
+        localStorage.removeItem('login_timestamp')
+        localStorage.removeItem('remember_me')
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   }

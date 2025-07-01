@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Trash2, Info, Volume2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -28,6 +28,10 @@ export function PronunciationsConfig({ open, onClose, pronunciations, onChange }
     with: '',
     ignore_case: false
   })
+
+  useEffect(() => {
+    setLocalPronunciations(pronunciations)
+  }, [pronunciations])
 
   const handleSave = () => {
     onChange(localPronunciations)

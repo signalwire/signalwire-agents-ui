@@ -25,6 +25,7 @@ class SWAIGRequest(BaseModel):
     function: str
     argument: Dict[str, Any]
     meta_data: Optional[Dict[str, Any]] = None
+    global_data: Optional[Dict[str, Any]] = None
     call_id: Optional[str] = None
     call: Optional[Dict[str, Any]] = None
     vars: Optional[Dict[str, Any]] = None
@@ -110,9 +111,19 @@ async def handle_swaig_function(
             
         except Exception as e:
             logger.error(f"Failed to decode auth header: {e}")
-            auth_header = None  # Fall through to meta_data
+            auth_header = None  # Fall through to other auth methods
     
-    # Fall back to meta_data token if no Basic auth
+    # Try global_data token next (new preferred method)
+    if not agent_id and request.global_data and "auth_token" in request.global_data:
+        try:
+            token_data = decode_skill_jwt_token(request.global_data["auth_token"])
+            agent_id = token_data.get("agent_id")
+            skill_name = token_data.get("skill_name", "general")
+            skill_params = token_data.get("skill_params", {})
+        except Exception as e:
+            logger.error(f"Failed to decode global_data token: {e}", exc_info=True)
+    
+    # Fall back to meta_data token if no Basic auth or global_data
     if not agent_id and request.meta_data and "token" in request.meta_data:
         try:
             token_data = decode_skill_jwt_token(request.meta_data["token"])
@@ -120,13 +131,14 @@ async def handle_swaig_function(
             skill_name = token_data.get("skill_name", "general")
             skill_params = token_data.get("skill_params", {})
         except Exception as e:
-            logger.error(f"Failed to decode SWAIG token: {e}", exc_info=True)
+            logger.error(f"Failed to decode meta_data token: {e}", exc_info=True)
             raise HTTPException(status_code=401, detail="Invalid token")
     
     if not agent_id:
         raise HTTPException(status_code=401, detail="Missing authentication")
     
     logger.info(f"SWAIG function call: agent={agent_id}, skill={skill_name}, function={request.function}")
+    logger.info(f"SWAIG arguments: {request.argument}")
     
     # Create ephemeral agent
     ephemeral_agent = None
@@ -134,7 +146,7 @@ async def handle_swaig_function(
         # Create agent instance
         ephemeral_agent = AgentBase(name=f"swaig-{agent_id}-{uuid.uuid4().hex[:8]}")
         
-        # For "general" auth, map function to skill
+        # For "general" auth, map function to skill and get params from agent config
         if skill_name == "general":
             function_to_skill = {
                 # Datetime functions
@@ -167,6 +179,15 @@ async def handle_swaig_function(
                     status_code=400,
                     detail=f"Unknown function: {request.function}"
                 )
+            
+            # Get the actual skill params from the agent's configuration
+            if agent_id:
+                agent = await db.get(Agent, agent_id)
+                if agent and agent.config.get('skills'):
+                    for skill_config in agent.config['skills']:
+                        if skill_config.get('name') == skill_name:
+                            skill_params = skill_config.get('params', {})
+                            break
         
         # Add the skill to the agent
         try:
@@ -183,11 +204,24 @@ async def handle_swaig_function(
         # Create mock post_data
         post_data = create_mock_post_data(request)
         
+        # Extract the actual arguments from the nested structure
+        # SWAIG sends arguments in a nested format with 'parsed' and 'raw'
+        actual_args = request.argument
+        if isinstance(actual_args, dict) and 'parsed' in actual_args:
+            # Extract from the parsed array
+            parsed_args = actual_args.get('parsed', [])
+            if parsed_args and isinstance(parsed_args, list) and len(parsed_args) > 0:
+                actual_args = parsed_args[0]
+            else:
+                actual_args = {}
+        
+        logger.info(f"Extracted arguments for function {request.function}: {actual_args}")
+        
         # Execute the function through the agent's handler
         # Call on_function_call - it might be sync or async
         result = ephemeral_agent.on_function_call(
             request.function,
-            request.argument,
+            actual_args,
             post_data
         )
         
@@ -202,6 +236,7 @@ async def handle_swaig_function(
                 response=result.response,
                 action=result.action
             )
+            logger.info(f"SWAIG function {request.function} returned SwaigFunctionResult: {result.response[:100]}...")
         elif isinstance(result, dict):
             # Handle dict response
             if "response" in result:
@@ -212,9 +247,11 @@ async def handle_swaig_function(
             else:
                 # Wrap dict as response
                 response = SWAIGResponse(response=result)
+            logger.info(f"SWAIG function {request.function} returned dict: {str(result)[:100]}...")
         else:
             # Handle string or other types
             response = SWAIGResponse(response=str(result))
+            logger.info(f"SWAIG function {request.function} returned: {str(result)[:100]}...")
         
         return response
         

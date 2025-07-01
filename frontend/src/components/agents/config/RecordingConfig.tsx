@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Shield, AlertTriangle } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,10 @@ interface RecordingConfigProps {
 export function RecordingConfig({ open, onClose, config, onChange }: RecordingConfigProps) {
   const [localConfig, setLocalConfig] = useState<RecordingConfig>(config)
 
+  useEffect(() => {
+    setLocalConfig(config)
+  }, [config])
+
   const handleSave = () => {
     onChange(localConfig)
     onClose()
@@ -31,7 +35,7 @@ export function RecordingConfig({ open, onClose, config, onChange }: RecordingCo
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Recording Configuration</DialogTitle>
           <DialogDescription>
@@ -39,7 +43,7 @@ export function RecordingConfig({ open, onClose, config, onChange }: RecordingCo
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 mt-4">
+        <div className="space-y-4 mt-4 overflow-y-auto flex-1 px-1">
           <Alert>
             <Shield className="h-4 w-4" />
             <AlertDescription>
@@ -162,7 +166,7 @@ export function RecordingConfig({ open, onClose, config, onChange }: RecordingCo
           )}
         </div>
 
-        <div className="flex justify-end gap-2 mt-6">
+        <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>

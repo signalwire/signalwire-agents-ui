@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Info, ExternalLink, FileText } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -7,9 +7,13 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 
 export interface PostPromptConfig {
+  enabled?: boolean
   mode: 'builtin' | 'custom'
+  text?: string
   custom_url?: string
 }
 
@@ -21,8 +25,23 @@ interface PostPromptConfigProps {
 }
 
 export function PostPromptConfig({ open, onClose, config, onChange }: PostPromptConfigProps) {
-  const [localConfig, setLocalConfig] = useState<PostPromptConfig>(config)
+  const [localConfig, setLocalConfig] = useState<PostPromptConfig>({
+    enabled: config.enabled ?? false,
+    mode: config.mode ?? 'builtin',
+    text: config.text ?? 'Summarize the conversation including key points and action items',
+    custom_url: config.custom_url
+  })
   const [urlError, setUrlError] = useState('')
+
+  // Sync local state with prop changes
+  useEffect(() => {
+    setLocalConfig({
+      enabled: config.enabled ?? false,
+      mode: config.mode ?? 'builtin',
+      text: config.text ?? 'Summarize the conversation including key points and action items',
+      custom_url: config.custom_url
+    })
+  }, [config])
 
   const handleSave = () => {
     if (localConfig.mode === 'custom' && localConfig.custom_url) {
@@ -71,12 +90,43 @@ export function PostPromptConfig({ open, onClose, config, onChange }: PostPrompt
             </AlertDescription>
           </Alert>
 
-          <RadioGroup
-            value={localConfig.mode}
-            onValueChange={(value: 'builtin' | 'custom') => 
-              setLocalConfig({ ...localConfig, mode: value })
-            }
-          >
+          {/* Enable/Disable Toggle */}
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="post-prompt-enabled"
+              checked={localConfig.enabled}
+              onCheckedChange={(checked) => 
+                setLocalConfig({ ...localConfig, enabled: checked })
+              }
+            />
+            <Label htmlFor="post-prompt-enabled" className="cursor-pointer">
+              Enable post-prompt summaries
+            </Label>
+          </div>
+
+          {localConfig.enabled && (
+            <>
+              {/* Post-prompt text */}
+              <div className="space-y-2">
+                <Label htmlFor="post-prompt-text">Post-Prompt Text</Label>
+                <Textarea
+                  id="post-prompt-text"
+                  value={localConfig.text || ''}
+                  onChange={(e) => setLocalConfig({ ...localConfig, text: e.target.value })}
+                  placeholder="Summarize the conversation including key points and action items"
+                  rows={3}
+                />
+                <p className="text-sm text-muted-foreground">
+                  This prompt will be sent to the AI after the call ends to generate a summary.
+                </p>
+              </div>
+
+              <RadioGroup
+                value={localConfig.mode}
+                onValueChange={(value: 'builtin' | 'custom') => 
+                  setLocalConfig({ ...localConfig, mode: value })
+                }
+              >
             {/* Built-in Viewer Option */}
             <Card className={localConfig.mode === 'builtin' ? 'border-primary' : ''}>
               <CardHeader>
@@ -212,7 +262,9 @@ export function PostPromptConfig({ open, onClose, config, onChange }: PostPrompt
                 </CardContent>
               )}
             </Card>
-          </RadioGroup>
+              </RadioGroup>
+            </>
+          )}
         </div>
 
         <div className="flex justify-end gap-2 mt-6">

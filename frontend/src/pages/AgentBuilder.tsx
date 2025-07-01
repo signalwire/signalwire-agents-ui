@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import { ArrowLeft, Save, Plus, Shield, Globe, Settings, Hash, Mic, Database, Zap, Circle, FileText, Network } from 'lucide-react'
+import { ArrowLeft, Save, Plus, Shield, Globe, Settings, Hash, Mic, Database, Zap, Circle, FileText, Network, Copy } from 'lucide-react'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -28,6 +28,8 @@ import { NativeFunctionsConfig } from '@/components/agents/config/NativeFunction
 import { RecordingConfig } from '@/components/agents/config/RecordingConfig'
 import { PostPromptConfig } from '@/components/agents/config/PostPromptConfig'
 import { ContextsStepsConfig } from '@/components/agents/config/ContextsStepsConfig'
+import { ConfirmationDialog } from '@/components/ui/confirmation-dialog'
+import { SaveAsCopyDialog } from '@/components/agents/SaveAsCopyDialog'
 import { HelpTooltip } from '@/components/ui/help-tooltip'
 import { helpContent } from '@/lib/helpContent'
 
@@ -45,6 +47,8 @@ export function AgentBuilderPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const [searchParams] = useSearchParams()
+  const copyId = searchParams.get('copy')
   const isEditMode = !!id
 
   const [promptSections, setPromptSections] = useState<AgentConfig['prompt_sections']>([])
@@ -76,10 +80,14 @@ export function AgentBuilderPage() {
     stereo: true
   })
   const [postPromptConfig, setPostPromptConfig] = useState<{
+    enabled?: boolean,
     mode: 'builtin' | 'custom',
+    text?: string,
     custom_url?: string
   }>({
-    mode: 'builtin'
+    enabled: false,
+    mode: 'builtin',
+    text: 'Summarize the conversation including key points and action items'
   })
   const [contextsStepsConfig, setContextsStepsConfig] = useState<{
     contexts: any[]
@@ -101,8 +109,13 @@ export function AgentBuilderPage() {
   const [showPostPromptConfig, setShowPostPromptConfig] = useState(false)
   const [showContextsStepsConfig, setShowContextsStepsConfig] = useState(false)
   const [selectedPresets, setSelectedPresets] = useState<string[]>([])
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false)
+  const [showNavigateDialog, setShowNavigateDialog] = useState(false)
+  const [pendingNavigationPath, setPendingNavigationPath] = useState<string | null>(null)
+  const [showCopyDialog, setShowCopyDialog] = useState(false)
 
-  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<AgentForm>({
+  const { register, handleSubmit, formState: { errors, isDirty }, setValue, watch } = useForm<AgentForm>({
     defaultValues: {
       name: '',
       description: '',
@@ -116,6 +129,131 @@ export function AgentBuilderPage() {
 
   const selectedConfigId = watch('languageConfigId')
   const isCustomConfig = selectedConfigId === 'custom'
+  const hasChanges = hasUnsavedChanges || isDirty
+
+  // Handle navigation with unsaved changes
+  const handleNavigation = (path: string) => {
+    if (hasChanges) {
+      setPendingNavigationPath(path)
+      setShowNavigateDialog(true)
+    } else {
+      navigate(path)
+    }
+  }
+
+  // Handle discard changes
+  const handleDiscard = async () => {
+    if (agent && languageConfigs) {
+      // Reset form values
+      setValue('name', agent.name)
+      setValue('description', agent.description || '')
+      
+      // Find matching config
+      const allConfigs = getAllConfigs()
+      let matchingConfig = null
+      
+      if (agent.config.engine === 'elevenlabs') {
+        matchingConfig = allConfigs.find(config => {
+          if (config.engine === 'elevenlabs') {
+            const agentVoiceId = agent.config.voice?.startsWith('elevenlabs.') 
+              ? agent.config.voice.substring('elevenlabs.'.length)
+              : agent.config.voice
+            const configVoiceId = config.voice?.startsWith('elevenlabs.') 
+              ? config.voice.substring('elevenlabs.'.length)
+              : config.voice
+            
+            return configVoiceId === agentVoiceId &&
+                   config.code === agent.config.language &&
+                   (!config.model || config.model === agent.config.model)
+          }
+          return false
+        })
+      } else {
+        matchingConfig = allConfigs.find(config => 
+          config.voice === agent.config.voice &&
+          config.code === agent.config.language &&
+          config.engine === agent.config.engine &&
+          (!config.model || config.model === agent.config.model)
+        )
+      }
+      
+      if (matchingConfig) {
+        setValue('languageConfigId', matchingConfig.id)
+      } else {
+        setValue('languageConfigId', 'custom')
+        setValue('customLanguage', agent.config.language)
+        setValue('customEngine', agent.config.engine || 'elevenlabs')
+        setValue('customModel', agent.config.model || '')
+        setValue('customVoice', agent.config.voice)
+      }
+
+      // Reset all configurations
+      setPromptSections(agent.config.prompt_sections)
+      setSkills(agent.config.skills)
+      setParams(agent.config.params)
+      if (agent.config.basic_auth_user) {
+        setBasicAuth({
+          user: agent.config.basic_auth_user,
+          password: agent.config.basic_auth_password,
+        })
+      } else {
+        setBasicAuth({ user: '', password: '' })
+      }
+      
+      setHintsConfig({
+        simple_hints: agent.config.simple_hints || [],
+        pattern_hints: agent.config.pattern_hints || []
+      })
+      setPronunciations(agent.config.pronunciations || [])
+      setGlobalData(agent.config.global_data || {})
+      setNativeFunctionsConfig({
+        enabled_functions: agent.config.native_functions || [],
+        internal_fillers: agent.config.internal_fillers || {}
+      })
+      setRecordingConfig({
+        enabled: agent.config.record_call || false,
+        format: agent.config.record_format || 'mp4',
+        stereo: agent.config.record_stereo !== false
+      })
+      setPostPromptConfig({
+        enabled: agent.config.post_prompt_config?.enabled ?? false,
+        mode: agent.config.post_prompt_config?.mode ?? 'builtin',
+        text: agent.config.post_prompt_config?.text ?? 'Summarize the conversation including key points and action items',
+        custom_url: agent.config.post_prompt_config?.custom_url
+      })
+      setContextsStepsConfig(agent.config.contexts_steps_config || { contexts: [] })
+      
+      // Reset change tracking
+      setHasUnsavedChanges(false)
+      setShowDiscardDialog(false)
+      
+      // Force form to reset dirty state
+      await new Promise(resolve => setTimeout(resolve, 0))
+    }
+  }
+
+  // Helper function to track changes
+  const trackChange = <T extends any>(setter: React.Dispatch<React.SetStateAction<T>>) => {
+    return (value: React.SetStateAction<T>) => {
+      setter(value)
+      if (isEditMode) {
+        setHasUnsavedChanges(true)
+      }
+    }
+  }
+
+  // Wrapped state setters that track changes
+  const setPromptSectionsWithTracking = trackChange(setPromptSections)
+  const setSkillsWithTracking = trackChange(setSkills)
+  const setParamsWithTracking = trackChange(setParams)
+  const setBasicAuthWithTracking = trackChange(setBasicAuth)
+  const setHintsConfigWithTracking = trackChange(setHintsConfig)
+  const setPronunciationsWithTracking = trackChange(setPronunciations)
+  const setGlobalDataWithTracking = trackChange(setGlobalData)
+  const setNativeFunctionsConfigWithTracking = trackChange(setNativeFunctionsConfig)
+  const setRecordingConfigWithTracking = trackChange(setRecordingConfig)
+  const setPostPromptConfigWithTracking = trackChange(setPostPromptConfig)
+  const setContextsStepsConfigWithTracking = trackChange(setContextsStepsConfig)
 
   // Fetch settings for voice options
   const { } = useQuery({
@@ -139,17 +277,19 @@ export function AgentBuilderPage() {
     }
   }, [langConfigData])
 
-  // Fetch existing agent if editing
+  // Fetch existing agent if editing or copying
   const { data: agent } = useQuery({
-    queryKey: ['agent', id],
-    queryFn: () => agentsApi.get(id!),
-    enabled: isEditMode,
+    queryKey: ['agent', id || copyId],
+    queryFn: () => agentsApi.get((id || copyId)!),
+    enabled: isEditMode || !!copyId,
   })
 
-  // Load agent data when editing
+
+  // Load agent data when editing or copying
   useEffect(() => {
     if (agent && languageConfigs) {
-      setValue('name', agent.name)
+      // When copying, prepend "Copy of " to the name
+      setValue('name', copyId ? `Copy of ${agent.name}` : agent.name)
       setValue('description', agent.description || '')
       
       // Try to find a matching preset/config
@@ -236,17 +376,29 @@ export function AgentBuilderPage() {
         })
       }
       if (agent.config.post_prompt_config) {
-        setPostPromptConfig(agent.config.post_prompt_config)
-      }
-      if (agent.config.contexts_steps_config) {
-        setContextsStepsConfig(agent.config.contexts_steps_config)
-      } else if (agent.config.post_prompt_url) {
+        // Ensure all fields are present, including enabled
+        console.log('Loading post_prompt_config:', agent.config.post_prompt_config);
+        setPostPromptConfig({
+          enabled: agent.config.post_prompt_config.enabled ?? false,
+          mode: agent.config.post_prompt_config.mode ?? 'builtin',
+          text: agent.config.post_prompt_config.text ?? 'Summarize the conversation including key points and action items',
+          custom_url: agent.config.post_prompt_config.custom_url
+        })
+      } else if (agent.config.post_prompt_url || agent.config.post_prompt) {
         // Legacy support
         setPostPromptConfig({
-          mode: 'custom',
+          enabled: true,
+          mode: agent.config.post_prompt_url ? 'custom' : 'builtin',
+          text: agent.config.post_prompt || 'Summarize the conversation including key points and action items',
           custom_url: agent.config.post_prompt_url
         })
       }
+      if (agent.config.contexts_steps_config) {
+        setContextsStepsConfig(agent.config.contexts_steps_config)
+      }
+      
+      // Reset unsaved changes flag when agent is loaded
+      setHasUnsavedChanges(false)
     }
   }, [agent, languageConfigs, setValue])
 
@@ -325,11 +477,63 @@ export function AgentBuilderPage() {
     onSuccess: () => {
       toast({ title: 'Agent created successfully' })
       queryClient.invalidateQueries({ queryKey: ['agents'] })
+      setHasUnsavedChanges(false)
       navigate('/agents')
     },
     onError: (error: any) => {
       toast({
         title: 'Failed to create agent',
+        description: error.response?.data?.detail || 'Please try again',
+        variant: 'destructive',
+      })
+    },
+  })
+
+  const copyMutation = useMutation({
+    mutationFn: async ({ name, description }: { name: string; description?: string }) => {
+      if (!agent) throw new Error('No agent to copy')
+      
+      // Build the complete config from current state
+      const config: AgentConfig = {
+        voice: agent.config.voice,
+        language: agent.config.language,
+        engine: agent.config.engine,
+        model: agent.config.model,
+        prompt_sections: promptSections,
+        skills: skills,
+        params: params,
+        hints: [],
+        ...(basicAuth.user && basicAuth.password && {
+          basic_auth_user: basicAuth.user,
+          basic_auth_password: basicAuth.password,
+        }),
+        simple_hints: hintsConfig.simple_hints,
+        pattern_hints: hintsConfig.pattern_hints,
+        pronunciations: pronunciations,
+        global_data: globalData,
+        native_functions: nativeFunctionsConfig.enabled_functions,
+        internal_fillers: nativeFunctionsConfig.internal_fillers,
+        record_call: recordingConfig.enabled,
+        record_format: recordingConfig.format,
+        record_stereo: recordingConfig.stereo,
+        post_prompt_config: postPromptConfig,
+        contexts_steps_config: contextsStepsConfig,
+      }
+      
+      return agentsApi.create({
+        name,
+        description,
+        config,
+      })
+    },
+    onSuccess: (newAgent) => {
+      toast({ title: 'Agent copied successfully' })
+      queryClient.invalidateQueries({ queryKey: ['agents'] })
+      navigate(`/agents/${newAgent.id}/edit`)
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Failed to copy agent',
         description: error.response?.data?.detail || 'Please try again',
         variant: 'destructive',
       })
@@ -392,6 +596,7 @@ export function AgentBuilderPage() {
         post_prompt_config: postPromptConfig,
         contexts_steps_config: contextsStepsConfig,
       }
+      console.log('Saving agent with post_prompt_config:', postPromptConfig);
       return agentsApi.update(id!, {
         name: data.name,
         description: data.description,
@@ -402,6 +607,7 @@ export function AgentBuilderPage() {
       toast({ title: 'Agent updated successfully' })
       queryClient.invalidateQueries({ queryKey: ['agents'] })
       queryClient.invalidateQueries({ queryKey: ['agent', id] })
+      setHasUnsavedChanges(false)
       navigate('/agents')
     },
     onError: (error: any) => {
@@ -425,29 +631,56 @@ export function AgentBuilderPage() {
     <MainLayout>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              onClick={() => navigate('/agents')}
+              onClick={() => handleNavigation('/agents')}
+              className="flex-shrink-0"
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-heading-primary">
-                {isEditMode ? 'Edit Agent' : 'Create New Agent'}
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-2xl font-bold text-heading-primary whitespace-nowrap">
+                {isEditMode ? 'Edit Agent' : copyId ? 'Copy Agent' : 'Create New Agent'}
               </h1>
-              <p className="text-muted-foreground">
-                Configure your SignalWire AI agent
+              <p className="text-sm sm:text-base text-muted-foreground">
+                {copyId ? 'Creating a copy of an existing agent' : 'Configure your SignalWire AI agent'}
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+          <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+            {hasChanges && isEditMode && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowDiscardDialog(true)}
+                className="text-sm"
+              >
+                Discard Changes
+              </Button>
+            )}
+            {isEditMode && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowCopyDialog(true)}
+                className="text-sm"
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Save As Copy</span>
+                <span className="sm:hidden">Copy</span>
+              </Button>
+            )}
+            <Button 
+              type="submit" 
+              disabled={createMutation.isPending || updateMutation.isPending || (isEditMode && !hasChanges)}
+              className="text-sm"
+            >
               <Save className="h-4 w-4 mr-2" />
-              {isEditMode ? 'Update' : 'Create'} Agent
+              {isEditMode ? 'Save Changes' : 'Create Agent'}
             </Button>
           </div>
         </div>
@@ -986,28 +1219,28 @@ export function AgentBuilderPage() {
           open={showPromptBuilder}
           onClose={() => setShowPromptBuilder(false)}
           sections={promptSections}
-          onChange={setPromptSections}
+          onChange={setPromptSectionsWithTracking}
         />
 
         <SkillsSelector
           open={showSkillsSelector}
           onClose={() => setShowSkillsSelector(false)}
           selectedSkills={skills}
-          onChange={setSkills}
+          onChange={setSkillsWithTracking}
         />
 
         <ParamsEditor
           open={showParamsEditor}
           onClose={() => setShowParamsEditor(false)}
           params={params}
-          onChange={setParams}
+          onChange={setParamsWithTracking}
         />
 
         <BasicAuthConfig
           open={showBasicAuth}
           onClose={() => setShowBasicAuth(false)}
           config={basicAuth}
-          onChange={setBasicAuth}
+          onChange={setBasicAuthWithTracking}
         />
 
         {/* New Configuration Dialogs */}
@@ -1015,28 +1248,28 @@ export function AgentBuilderPage() {
           open={showHintsConfig}
           onClose={() => setShowHintsConfig(false)}
           config={hintsConfig}
-          onChange={setHintsConfig}
+          onChange={setHintsConfigWithTracking}
         />
 
         <PronunciationsConfig
           open={showPronunciationsConfig}
           onClose={() => setShowPronunciationsConfig(false)}
           pronunciations={pronunciations}
-          onChange={setPronunciations}
+          onChange={setPronunciationsWithTracking}
         />
 
         <GlobalDataConfig
           open={showGlobalDataConfig}
           onClose={() => setShowGlobalDataConfig(false)}
           globalData={globalData}
-          onChange={setGlobalData}
+          onChange={setGlobalDataWithTracking}
         />
 
         <NativeFunctionsConfig
           open={showNativeFunctionsConfig}
           onClose={() => setShowNativeFunctionsConfig(false)}
           config={nativeFunctionsConfig}
-          onChange={setNativeFunctionsConfig}
+          onChange={setNativeFunctionsConfigWithTracking}
           languages={[
             { code: 'en-US', name: 'English' },
             // TODO: Get languages from agent config
@@ -1047,23 +1280,61 @@ export function AgentBuilderPage() {
           open={showRecordingConfig}
           onClose={() => setShowRecordingConfig(false)}
           config={recordingConfig}
-          onChange={setRecordingConfig}
+          onChange={setRecordingConfigWithTracking}
         />
 
         <PostPromptConfig
           open={showPostPromptConfig}
           onClose={() => setShowPostPromptConfig(false)}
           config={postPromptConfig}
-          onChange={setPostPromptConfig}
+          onChange={setPostPromptConfigWithTracking}
         />
 
         <ContextsStepsConfig
           open={showContextsStepsConfig}
           onClose={() => setShowContextsStepsConfig(false)}
           config={contextsStepsConfig}
-          onChange={setContextsStepsConfig}
+          onChange={setContextsStepsConfigWithTracking}
           availableFunctions={skills.map(skill => skill.tool_name || skill.name)}
         />
+
+        {/* Confirmation Dialogs */}
+        <ConfirmationDialog
+          open={showDiscardDialog}
+          onOpenChange={setShowDiscardDialog}
+          title="Discard Changes"
+          description="Are you sure you want to discard all unsaved changes? This action cannot be undone."
+          actionLabel="Discard"
+          variant="destructive"
+          onConfirm={handleDiscard}
+        />
+
+        <ConfirmationDialog
+          open={showNavigateDialog}
+          onOpenChange={setShowNavigateDialog}
+          title="Unsaved Changes"
+          description="You have unsaved changes. Are you sure you want to leave without saving?"
+          actionLabel="Leave Without Saving"
+          cancelLabel="Stay"
+          variant="destructive"
+          onConfirm={() => {
+            if (pendingNavigationPath) {
+              navigate(pendingNavigationPath)
+            }
+          }}
+        />
+
+        {/* Save As Copy Dialog */}
+        {agent && (
+          <SaveAsCopyDialog
+            open={showCopyDialog}
+            onOpenChange={setShowCopyDialog}
+            originalName={agent.name}
+            onConfirm={async (name, description) => {
+              await copyMutation.mutateAsync({ name, description })
+            }}
+          />
+        )}
       </form>
     </MainLayout>
   )

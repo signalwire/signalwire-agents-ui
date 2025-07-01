@@ -42,7 +42,9 @@ export interface AgentConfig {
   record_format?: 'mp4' | 'wav'
   record_stereo?: boolean
   post_prompt_config?: {
+    enabled?: boolean
     mode: 'builtin' | 'custom'
+    text?: string
     custom_url?: string
   }
   contexts_steps_config?: {
@@ -72,6 +74,29 @@ export interface UpdateAgentRequest {
   config?: AgentConfig
 }
 
+export interface CallSummary {
+  id: string
+  agent_id: string
+  call_id: string
+  ai_session_id?: string
+  call_start_date?: number
+  call_end_date?: number
+  caller_id_name?: string
+  caller_id_number?: string
+  post_prompt_summary?: string
+  total_minutes?: number
+  total_input_tokens?: number
+  total_output_tokens?: number
+  total_cost?: number
+  created_at: string
+}
+
+export interface CallSummaryDetail extends CallSummary {
+  call_log: any[]
+  swaig_log: any[]
+  raw_data: Record<string, any>
+}
+
 export const agentsApi = {
   list: async (): Promise<Agent[]> => {
     const response = await apiClient.get<Agent[]>('/agents')
@@ -95,5 +120,24 @@ export const agentsApi = {
 
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/agents/${id}`)
+  },
+
+  replace: async (targetId: string, sourceId: string): Promise<Agent> => {
+    const response = await apiClient.post<Agent>(`/agents/${targetId}/replace`, {
+      source_agent_id: sourceId
+    })
+    return response.data
+  },
+
+  getSummaries: async (agentId: string, skip = 0, limit = 20): Promise<CallSummary[]> => {
+    const response = await apiClient.get<CallSummary[]>(`/agents/${agentId}/summaries`, {
+      params: { skip, limit }
+    })
+    return response.data
+  },
+
+  getSummaryDetail: async (agentId: string, summaryId: string): Promise<CallSummaryDetail> => {
+    const response = await apiClient.get<CallSummaryDetail>(`/agents/${agentId}/summaries/${summaryId}`)
+    return response.data
   },
 }

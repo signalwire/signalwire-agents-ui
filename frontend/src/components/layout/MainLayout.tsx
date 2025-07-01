@@ -29,14 +29,14 @@ export function MainLayout({ children }: MainLayoutProps) {
       <header className="border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <Link to="/" className="flex items-center gap-2">
+            <div className="flex items-center gap-2 sm:gap-6">
+              <Link to="/" className="flex items-center gap-1 sm:gap-2">
                 <img 
                   src={logoSrc} 
                   alt="SignalWire" 
-                  className="h-8 w-auto"
+                  className="h-6 sm:h-8 w-auto flex-shrink-0"
                 />
-                <span className="text-lg font-semibold">Agent Builder</span>
+                <span className="text-sm sm:text-lg font-semibold whitespace-nowrap">Agent Builder</span>
               </Link>
               <nav className="hidden md:flex items-center gap-4">
                 <Link
@@ -66,27 +66,28 @@ export function MainLayout({ children }: MainLayoutProps) {
               </nav>
             </div>
             
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground hidden sm:inline">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <span className="text-xs sm:text-sm text-muted-foreground hidden lg:inline truncate max-w-[100px] sm:max-w-none">
                 {tokenName}
               </span>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowHelp(true)}
-                className="h-9 w-9"
+                className="h-8 w-8 sm:h-9 sm:w-9"
               >
                 <HelpCircle className="h-4 w-4" />
+                <span className="sr-only">Help</span>
               </Button>
               <ThemeToggle />
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
                 onClick={logout}
-                className="gap-2"
+                className="h-8 w-8 sm:h-9 sm:w-9"
               >
                 <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline">Logout</span>
+                <span className="sr-only">Logout</span>
               </Button>
             </div>
           </div>

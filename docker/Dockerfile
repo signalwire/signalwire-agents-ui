@@ -23,16 +23,22 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
 WORKDIR /app
 
 # Layer 2a: Install signalwire-agents (local or from pip)
+# Use build arg to bust cache when SDK changes
+ARG SDK_CACHE_BUST=1
 # Copy signalwire-agents if it exists locally
 COPY signalwire-agents* ./signalwire-agents/
 
 # Set python3.11 as default python3
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
 
+# Upgrade pip and install build tools
+RUN python3.11 -m pip install --upgrade pip setuptools wheel
+
 # Install signalwire-agents - use local if present, otherwise from pip
 RUN if [ -d "./signalwire-agents" ]; then \
         echo "Installing local signalwire-agents..." && \
-        python3.11 -m pip install --no-cache-dir -e ./signalwire-agents; \
+        python3.11 -m pip install --no-cache-dir -e ./signalwire-agents && \
+        python3.11 -m pip install --no-cache-dir signalwire-pom==2.7.1; \
     else \
         echo "Installing signalwire-agents from pip..." && \
         python3.11 -m pip install --no-cache-dir signalwire-agents>=1.0.0; \

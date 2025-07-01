@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Network, FileText, Plus, Trash2, ChevronDown, ChevronUp, Copy, AlertCircle, HelpCircle } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -63,6 +63,11 @@ export function ContextsStepsConfig({
   const [activeContext, setActiveContext] = useState<string>(localConfig.contexts[0]?.id || '')
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set())
   const [showHelp, setShowHelp] = useState(false)
+
+  useEffect(() => {
+    setLocalConfig(config)
+    setActiveContext(config.contexts[0]?.id || '')
+  }, [config])
 
   const toggleStepExpansion = (stepId: string) => {
     const newExpanded = new Set(expandedSteps)

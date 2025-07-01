@@ -1,5 +1,5 @@
 """Agent management API endpoints."""
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from pydantic import BaseModel, Field
@@ -241,6 +241,65 @@ async def update_agent(
     )
 
 
+@router.post("/{agent_id}/replace")
+async def replace_agent(
+    agent_id: UUID,
+    request: Request,
+    source_agent_id: UUID = Body(..., embed=True),
+    db: AsyncSession = Depends(get_db),
+    auth_data: Dict[str, Any] = Depends(verify_jwt_token)
+) -> AgentResponse:
+    """Replace an agent's configuration with another agent's configuration."""
+    # Get both agents
+    target_result = await db.execute(select(Agent).where(Agent.id == agent_id))
+    target_agent = target_result.scalar_one_or_none()
+    
+    if not target_agent:
+        raise HTTPException(status_code=404, detail="Target agent not found")
+    
+    source_result = await db.execute(select(Agent).where(Agent.id == source_agent_id))
+    source_agent = source_result.scalar_one_or_none()
+    
+    if not source_agent:
+        raise HTTPException(status_code=404, detail="Source agent not found")
+    
+    # Save original name and description
+    original_name = target_agent.name
+    original_description = target_agent.description
+    
+    # Copy configuration from source to target
+    target_agent.config = source_agent.config.copy()
+    
+    # Create audit log
+    token = auth_data["token"]
+    await create_audit_log(
+        db,
+        user_id=str(token.id),
+        action="AGENT_REPLACE",
+        description=f"Replaced configuration of agent '{original_name}' with configuration from '{source_agent.name}'",
+        metadata={
+            **get_request_metadata(request),
+            "target_agent_id": str(agent_id),
+            "source_agent_id": str(source_agent_id),
+            "target_agent_name": original_name,
+            "source_agent_name": source_agent.name
+        }
+    )
+    
+    await db.commit()
+    await db.refresh(target_agent)
+    
+    return AgentResponse(
+        id=target_agent.id,
+        name=target_agent.name,
+        description=target_agent.description,
+        config=target_agent.config,
+        swml_url=format_swml_url(str(target_agent.id), target_agent.config),
+        created_at=target_agent.created_at,
+        updated_at=target_agent.updated_at
+    )
+
+
 @router.delete("/{agent_id}")
 async def delete_agent(
     agent_id: UUID,
@@ -276,3 +335,121 @@ async def delete_agent(
     await db.commit()
     
     return {"message": "Agent deleted successfully"}
+
+
+# Call Summary endpoints
+
+class CallSummaryResponse(BaseModel):
+    """Call summary response schema."""
+    id: str
+    agent_id: UUID
+    call_id: str
+    ai_session_id: Optional[str]
+    call_start_date: Optional[int]
+    call_end_date: Optional[int]
+    caller_id_name: Optional[str]
+    caller_id_number: Optional[str]
+    post_prompt_summary: Optional[str]
+    total_minutes: Optional[float]
+    total_input_tokens: Optional[int]
+    total_output_tokens: Optional[int]
+    total_cost: Optional[float]
+    created_at: datetime
+
+
+class CallSummaryDetailResponse(CallSummaryResponse):
+    """Detailed call summary with full logs."""
+    call_log: List[Dict[str, Any]]
+    swaig_log: List[Dict[str, Any]]
+    raw_data: Dict[str, Any]
+
+
+@router.get("/{agent_id}/summaries")
+async def get_agent_summaries(
+    agent_id: UUID,
+    skip: int = 0,
+    limit: int = 20,
+    db: AsyncSession = Depends(get_db),
+    auth_data: Dict[str, Any] = Depends(verify_jwt_token)
+) -> List[CallSummaryResponse]:
+    """Get paginated call summaries for an agent."""
+    # Import here to avoid circular imports
+    from ..models import CallSummary
+    
+    # Verify agent exists
+    agent = await db.get(Agent, agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    # Get summaries
+    result = await db.execute(
+        select(CallSummary)
+        .where(CallSummary.agent_id == agent_id)
+        .order_by(CallSummary.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    summaries = result.scalars().all()
+    
+    return [
+        CallSummaryResponse(
+            id=summary.id,
+            agent_id=summary.agent_id,
+            call_id=summary.call_id,
+            ai_session_id=summary.ai_session_id,
+            call_start_date=summary.call_start_date,
+            call_end_date=summary.call_end_date,
+            caller_id_name=summary.caller_id_name,
+            caller_id_number=summary.caller_id_number,
+            post_prompt_summary=summary.post_prompt_summary,
+            total_minutes=summary.total_minutes,
+            total_input_tokens=summary.total_input_tokens,
+            total_output_tokens=summary.total_output_tokens,
+            total_cost=summary.total_cost,
+            created_at=summary.created_at
+        )
+        for summary in summaries
+    ]
+
+
+@router.get("/{agent_id}/summaries/{summary_id}")
+async def get_summary_detail(
+    agent_id: UUID,
+    summary_id: str,
+    db: AsyncSession = Depends(get_db),
+    auth_data: Dict[str, Any] = Depends(verify_jwt_token)
+) -> CallSummaryDetailResponse:
+    """Get detailed call summary including full logs."""
+    # Import here to avoid circular imports
+    from ..models import CallSummary
+    
+    # Get summary
+    result = await db.execute(
+        select(CallSummary)
+        .where(CallSummary.id == summary_id)
+        .where(CallSummary.agent_id == agent_id)
+    )
+    summary = result.scalar_one_or_none()
+    
+    if not summary:
+        raise HTTPException(status_code=404, detail="Call summary not found")
+    
+    return CallSummaryDetailResponse(
+        id=summary.id,
+        agent_id=summary.agent_id,
+        call_id=summary.call_id,
+        ai_session_id=summary.ai_session_id,
+        call_start_date=summary.call_start_date,
+        call_end_date=summary.call_end_date,
+        caller_id_name=summary.caller_id_name,
+        caller_id_number=summary.caller_id_number,
+        post_prompt_summary=summary.post_prompt_summary,
+        total_minutes=summary.total_minutes,
+        total_input_tokens=summary.total_input_tokens,
+        total_output_tokens=summary.total_output_tokens,
+        total_cost=summary.total_cost,
+        created_at=summary.created_at,
+        call_log=summary.call_log or [],
+        swaig_log=summary.swaig_log or [],
+        raw_data=summary.raw_data or {}
+    )

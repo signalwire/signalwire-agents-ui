@@ -29,6 +29,9 @@ def generate_swml(agent_config: Dict[str, Any], agent_id: str) -> Dict[str, Any]
         record_stereo=record_stereo
     )
     
+    # Debug logging to verify recording settings
+    logger.info(f"Agent created with record_call={record_call}, format={record_format}, stereo={record_stereo}")
+    
     # Configure voice and language
     voice = agent_config.get('voice', 'nova')
     engine = agent_config.get('engine', 'elevenlabs')
@@ -185,15 +188,8 @@ def generate_swml(agent_config: Dict[str, Any], agent_id: str) -> Dict[str, Any]
             skill_name = skill_config.get('name')
             skill_params = skill_config.get('params', {})
             
-            # Create JWT token for this skill
-            token = create_skill_jwt_token(agent_id, skill_name, skill_params)
-            
-            # Add the token to skill params for SWAIG authentication
+            # Don't add per-skill tokens anymore - we use global_data
             skill_params_with_auth = skill_params.copy()
-            skill_params_with_auth['swaig_fields'] = skill_params.get('swaig_fields', {})
-            skill_params_with_auth['swaig_fields']['meta_data'] = {
-                'token': token
-            }
             
             # For skills that can use environment variables, check if params are missing
             # and env vars are available
@@ -227,20 +223,45 @@ def generate_swml(agent_config: Dict[str, Any], agent_id: str) -> Dict[str, Any]
                 logger.warning(f"Could not add skill {skill_name}: {e}")
                 # Don't fall back to manual registration - let the SDK handle it
     
-    # Configure post-prompt if provided
-    if post_prompt := agent_config.get('post_prompt'):
-        agent.set_post_prompt(post_prompt)
+    # Configure post-prompt based on agent config
+    post_prompt_config = agent_config.get('post_prompt_config', {})
+    
+    logger.info(f"Post-prompt config: {post_prompt_config}")
+    
+    # Check if post-prompt is enabled (either new format or legacy)
+    post_prompt_enabled = (
+        post_prompt_config.get('enabled', False) or 
+        agent_config.get('post_prompt_enabled', False) or
+        bool(agent_config.get('post_prompt'))
+    )
+    
+    logger.info(f"Post-prompt enabled: {post_prompt_enabled}")
+    
+    if post_prompt_enabled:
+        # Get post-prompt text
+        post_prompt_text = (
+            post_prompt_config.get('text') or
+            agent_config.get('post_prompt_text') or
+            agent_config.get('post_prompt') or
+            'Summarize the conversation including key points and action items'
+        )
+        agent.set_post_prompt(post_prompt_text)
         
-        # Check new post_prompt_config format first
-        post_prompt_config = agent_config.get('post_prompt_config')
-        if post_prompt_config and post_prompt_config.get('mode') == 'custom' and post_prompt_config.get('custom_url'):
+        # Determine mode and URL
+        post_prompt_mode = post_prompt_config.get('mode', 'builtin')
+        if post_prompt_mode == 'custom' and post_prompt_config.get('custom_url'):
             agent.set_post_prompt_url(post_prompt_config['custom_url'])
-        # Fall back to legacy post_prompt_url
-        elif post_prompt_url := agent_config.get('post_prompt_url'):
-            agent.set_post_prompt_url(post_prompt_url)
-        # Default to built-in handler
+        elif agent_config.get('post_prompt_url'):  # Legacy support
+            agent.set_post_prompt_url(agent_config['post_prompt_url'])
         else:
-            agent.set_post_prompt_url(f"https://{settings.hostname}:{settings.port}/api/post-prompt/{agent_id}")
+            # Use built-in handler
+            agent.set_post_prompt_url(f"https://{settings.hostname}:{settings.port}/api/post-prompt/receive")
+            
+            # Only add auth token to global_data when using built-in handler
+            auth_token = create_skill_jwt_token(agent_id, "general", {})
+            existing_global_data = agent_config.get('global_data', {})
+            global_data_with_auth = {**existing_global_data, 'auth_token': auth_token}
+            agent.set_global_data(global_data_with_auth)
     
     # Get the SWML document from the agent
     try:
@@ -255,7 +276,12 @@ def generate_swml(agent_config: Dict[str, Any], agent_id: str) -> Dict[str, Any]
         import json
         swml_doc = json.loads(swml_json)
         
-        # Override webhook URLs in SWAIG functions to use our endpoint with proper auth
+        # Log the SWML structure to debug recording issue
+        logger.info(f"SWML sections: {list(swml_doc.get('sections', {}).get('main', []))}")
+        for i, section in enumerate(swml_doc.get('sections', {}).get('main', [])):
+            logger.info(f"Section {i}: {list(section.keys())}")
+        
+        # Override webhook URLs in SWAIG functions to use our endpoint
         if 'sections' in swml_doc and 'main' in swml_doc['sections']:
             for section in swml_doc['sections']['main']:
                 if 'ai' in section and 'SWAIG' in section['ai'] and 'functions' in section['ai']['SWAIG']:
@@ -263,25 +289,38 @@ def generate_swml(agent_config: Dict[str, Any], agent_id: str) -> Dict[str, Any]
                         # Replace the SDK's webhook URL with our own
                         function['web_hook_url'] = f"https://{settings.hostname}:{settings.port}/api/swaig/function"
                         
-                        # Add auth token to meta_data if not present
+                        # Add function-specific token to meta_data for backward compatibility
                         if 'meta_data' not in function:
                             function['meta_data'] = {}
                         
-                        # Extract skill name from function or use general token
+                        # Find the skill that provides this function
+                        function_name = function.get('function', '')
                         skill_name = None
-                        for skill_config in agent_config.get('skills', []):
-                            # Try to match by function name or tool name
-                            if skill_config.get('name'):
-                                skill_name = skill_config['name']
-                                skill_params = skill_config.get('params', {})
-                                # Create skill-specific token
-                                token = create_skill_jwt_token(agent_id, skill_name, skill_params)
-                                function['meta_data']['token'] = token
-                                break
+                        skill_params = {}
                         
-                        if not skill_name:
-                            # Use general token if no specific skill found
-                            function['meta_data']['token'] = create_skill_jwt_token(agent_id, "general", {})
+                        # Map function to skill
+                        function_to_skill = {
+                            "search_web": "web_search",
+                            "web_search": "web_search",
+                            "get_weather": "weather",
+                            "get_current_time": "datetime",
+                            "get_current_date": "datetime",
+                            "calculate": "math",
+                            "tell_joke": "joke",
+                            # Add more mappings as needed
+                        }
+                        
+                        skill_name = function_to_skill.get(function_name)
+                        if skill_name:
+                            # Find skill params from agent config
+                            for skill_config in agent_config.get('skills', []):
+                                if skill_config.get('name') == skill_name:
+                                    skill_params = skill_config.get('params', {})
+                                    break
+                        
+                        # Create function-specific token
+                        token = create_skill_jwt_token(agent_id, skill_name or "general", skill_params)
+                        function['meta_data']['token'] = token
         
         # Return the modified SWML document
         return swml_doc
@@ -292,7 +331,7 @@ def generate_swml(agent_config: Dict[str, Any], agent_id: str) -> Dict[str, Any]
         return generate_swml_manual(agent_config, agent_id)
 
 
-def add_manual_skill_functions(agent: AgentBase, skill_name: str, token: str):
+def add_manual_skill_functions(agent: AgentBase, skill_name: str):
     """Manually add skill functions when dynamic loading fails."""
     
     # Define manual function mappings
@@ -308,8 +347,7 @@ def add_manual_skill_functions(agent: AgentBase, skill_name: str, token: str):
                         "description": "Timezone name (e.g., 'America/New_York', 'Europe/London'). Defaults to UTC."
                     }
                 }
-            },
-            meta_data={"token": token}
+            }
         )
         agent.register_swaig_function(
             name="get_current_date",
@@ -322,8 +360,7 @@ def add_manual_skill_functions(agent: AgentBase, skill_name: str, token: str):
                         "description": "Timezone name for the date. Defaults to UTC."
                     }
                 }
-            },
-            meta_data={"token": token}
+            }
         )
     elif skill_name == "math":
         agent.register_swaig_function(
@@ -338,8 +375,7 @@ def add_manual_skill_functions(agent: AgentBase, skill_name: str, token: str):
                     }
                 },
                 "required": ["expression"]
-            },
-            meta_data={"token": token}
+            }
         )
     elif skill_name == "web_search":
         agent.register_swaig_function(
@@ -354,8 +390,7 @@ def add_manual_skill_functions(agent: AgentBase, skill_name: str, token: str):
                     }
                 },
                 "required": ["query"]
-            },
-            meta_data={"token": token}
+            }
         )
     elif skill_name == "weather":
         agent.register_swaig_function(
@@ -370,8 +405,7 @@ def add_manual_skill_functions(agent: AgentBase, skill_name: str, token: str):
                     }
                 },
                 "required": ["location"]
-            },
-            meta_data={"token": token}
+            }
         )
 
 
@@ -461,7 +495,6 @@ def generate_swml_manual(agent_config: Dict[str, Any], agent_id: str) -> Dict[st
         for skill_config in skills:
             skill_name = skill_config.get('name')
             skill_params = skill_config.get('params', {})
-            token = create_skill_jwt_token(agent_id, skill_name, skill_params)
             
             # Add functions based on skill type
             if skill_name == "datetime":
@@ -477,8 +510,7 @@ def generate_swml_manual(agent_config: Dict[str, Any], agent_id: str) -> Dict[st
                                     "description": "Timezone name (e.g., 'America/New_York', 'Europe/London'). Defaults to UTC."
                                 }
                             }
-                        },
-                        "meta_data": {"token": token}
+                        }
                     },
                     {
                         "function": "get_current_date",
@@ -491,8 +523,7 @@ def generate_swml_manual(agent_config: Dict[str, Any], agent_id: str) -> Dict[st
                                     "description": "Timezone name for the date. Defaults to UTC."
                                 }
                             }
-                        },
-                        "meta_data": {"token": token}
+                        }
                     }
                 ])
             elif skill_name == "math":
@@ -549,20 +580,62 @@ def generate_swml_manual(agent_config: Dict[str, Any], agent_id: str) -> Dict[st
     
     ai_config["SWAIG"] = swaig_config
     
-    # Add post-prompt
-    if post_prompt := agent_config.get('post_prompt'):
-        ai_config["post_prompt"] = post_prompt
-        if post_prompt_url := agent_config.get('post_prompt_url'):
-            ai_config["post_prompt_url"] = post_prompt_url
-        else:
-            ai_config["post_prompt_url"] = f"https://{settings.hostname}:{settings.port}/api/post-prompt/{agent_id}"
+    # Add post-prompt based on agent config
+    post_prompt_config = agent_config.get('post_prompt_config', {})
     
-    return {
+    # Check if post-prompt is enabled (either new format or legacy)
+    post_prompt_enabled = (
+        post_prompt_config.get('enabled', False) or 
+        agent_config.get('post_prompt_enabled', False) or
+        bool(agent_config.get('post_prompt'))
+    )
+    
+    if post_prompt_enabled:
+        # Get post-prompt text
+        post_prompt_text = (
+            post_prompt_config.get('text') or
+            agent_config.get('post_prompt_text') or
+            agent_config.get('post_prompt') or
+            'Summarize the conversation including key points and action items'
+        )
+        ai_config["post_prompt"] = post_prompt_text
+        
+        # Determine mode and URL
+        post_prompt_mode = post_prompt_config.get('mode', 'builtin')
+        if post_prompt_mode == 'custom' and post_prompt_config.get('custom_url'):
+            ai_config["post_prompt_url"] = post_prompt_config['custom_url']
+        elif agent_config.get('post_prompt_url'):  # Legacy support
+            ai_config["post_prompt_url"] = agent_config['post_prompt_url']
+        else:
+            ai_config["post_prompt_url"] = f"https://{settings.hostname}:{settings.port}/api/post-prompt/receive"
+    
+    # Build the SWML document
+    main_section = [{"answer": {}}]
+    
+    # Add record_call if enabled
+    if agent_config.get('record_call', False):
+        main_section.append({
+            "record_call": {
+                "format": agent_config.get('record_format', 'mp4'),
+                "stereo": agent_config.get('record_stereo', True)
+            }
+        })
+    
+    main_section.append({"ai": ai_config})
+    
+    swml_doc = {
         "version": "1.0",
         "sections": {
-            "main": [
-                {"answer": {}},
-                {"ai": ai_config}
-            ]
+            "main": main_section
         }
     }
+    
+    # Add global_data - only include auth token if post-prompt is enabled with built-in handler
+    existing_global_data = agent_config.get('global_data', {})
+    if post_prompt_enabled and post_prompt_mode == 'builtin':
+        auth_token = create_skill_jwt_token(agent_id, "general", {})
+        swml_doc['global_data'] = {**existing_global_data, 'auth_token': auth_token}
+    elif existing_global_data:
+        swml_doc['global_data'] = existing_global_data
+    
+    return swml_doc

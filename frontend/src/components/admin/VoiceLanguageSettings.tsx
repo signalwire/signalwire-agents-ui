@@ -40,7 +40,7 @@ export function VoiceLanguageSettings() {
   const loadLanguageSettings = async () => {
     setIsLoading(true);
     try {
-      const response = await api.get("/api/settings/language-configs");
+      const response = await api.get("/api/admin/settings/language-configs");
       if (response.data.configs) {
         setLanguageConfigs(response.data.configs);
       }
@@ -61,7 +61,7 @@ export function VoiceLanguageSettings() {
   const saveLanguageSettings = async () => {
     setIsSaving(true);
     try {
-      await api.post("/api/settings/language-configs", {
+      await api.post("/api/admin/settings/language-configs", {
         configs: languageConfigs,
         selectedPresets
       });

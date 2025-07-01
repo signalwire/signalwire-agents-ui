@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     
     # CORS
     cors_origins: list[str] = Field(
-        default=["https://tatooine.cantina.cloud:8430"],
+        default=["*"],
         description="Allowed CORS origins"
     )
     

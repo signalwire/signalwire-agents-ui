@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { Plus, Trash2, Info, ChevronDown, ChevronRight } from 'lucide-react'
@@ -53,6 +53,10 @@ export function NativeFunctionsConfig({
     func: string
     lang: string
   } | null>(null)
+
+  useEffect(() => {
+    setLocalConfig(config)
+  }, [config])
 
   // Fetch available native functions from backend
   const { data: nativeFunctions } = useQuery({

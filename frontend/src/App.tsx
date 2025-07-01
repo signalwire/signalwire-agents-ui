@@ -6,6 +6,7 @@ import { AgentsPage } from '@/pages/Agents'
 import { AgentBuilderPage } from '@/pages/AgentBuilder'
 import { AdminPage } from '@/pages/Admin'
 import { SkillsMarketplacePage } from '@/pages/SkillsMarketplace'
+import { CallSummariesPage } from '@/pages/CallSummaries'
 import { Toaster } from '@/components/ui/toaster'
 import { ThemeProvider } from '@/components/theme-provider'
 
@@ -44,10 +45,19 @@ function App() {
           />
           
           <Route
-            path="/agents/:id"
+            path="/agents/:id/edit"
             element={
               <ProtectedRoute>
                 <AgentBuilderPage />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/agents/:agentId/summaries"
+            element={
+              <ProtectedRoute>
+                <CallSummariesPage />
               </ProtectedRoute>
             }
           />

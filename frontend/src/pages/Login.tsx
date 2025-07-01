@@ -30,8 +30,17 @@ export function LoginPage() {
     try {
       setError(null)
       await login(data)
-    } catch (err) {
-      setError(getErrorMessage(err))
+    } catch (err: any) {
+      // Provide more specific error messages
+      if (err.response?.status === 401) {
+        setError('Invalid access token. Please check your token and try again.')
+      } else if (err.response?.status === 500) {
+        setError('Server error. Please try again later.')
+      } else if (!navigator.onLine) {
+        setError('No internet connection. Please check your network.')
+      } else {
+        setError(getErrorMessage(err))
+      }
     }
   }
 

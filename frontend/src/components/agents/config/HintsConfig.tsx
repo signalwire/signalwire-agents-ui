@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Trash2, Info } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -39,6 +39,11 @@ export function HintsConfig({ open, onClose, config, onChange }: HintsConfigProp
     ignore_case: false
   })
   const [patternError, setPatternError] = useState('')
+
+  useEffect(() => {
+    setLocalConfig(config)
+    setSimpleHintsText(config.simple_hints.join('\n'))
+  }, [config])
 
   const handleSave = () => {
     // Parse simple hints from textarea

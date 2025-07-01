@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Trash2, Info, Code } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -44,6 +44,15 @@ export function GlobalDataConfig({ open, onClose, globalData, onChange }: Global
   const [jsonMode, setJsonMode] = useState(false)
   const [jsonText, setJsonText] = useState(JSON.stringify(globalData, null, 2))
   const [jsonError, setJsonError] = useState('')
+
+  useEffect(() => {
+    setEntries(Object.entries(globalData).map(([key, value]) => ({
+      key,
+      value,
+      type: detectType(value)
+    })))
+    setJsonText(JSON.stringify(globalData, null, 2))
+  }, [globalData])
 
   function detectType(value: any): DataType {
     if (typeof value === 'boolean') return 'boolean'
