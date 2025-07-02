@@ -40,6 +40,8 @@ class Agent(Base):
     config = Column(JSON, nullable=False, default={})
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by = Column(String)  # User ID who last updated
+    version = Column(Integer, default=1)  # For optimistic locking
     
     # Post-prompt fields
     post_prompt_enabled = Column(Boolean, default=False)

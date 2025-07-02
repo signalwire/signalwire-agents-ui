@@ -3,7 +3,9 @@ ALTER TABLE agents
 ADD COLUMN IF NOT EXISTS post_prompt_enabled BOOLEAN DEFAULT false,
 ADD COLUMN IF NOT EXISTS post_prompt_mode VARCHAR(50) DEFAULT 'builtin',
 ADD COLUMN IF NOT EXISTS post_prompt_text TEXT DEFAULT 'Summarize the conversation including key points and action items',
-ADD COLUMN IF NOT EXISTS post_prompt_url VARCHAR(500);
+ADD COLUMN IF NOT EXISTS post_prompt_url VARCHAR(500),
+ADD COLUMN IF NOT EXISTS updated_by VARCHAR(255),
+ADD COLUMN IF NOT EXISTS version INTEGER DEFAULT 1;
 
 -- Create call_summaries table
 CREATE TABLE IF NOT EXISTS call_summaries (
@@ -40,3 +42,6 @@ CREATE TABLE IF NOT EXISTS call_summaries (
 CREATE INDEX IF NOT EXISTS idx_call_summaries_agent_id ON call_summaries(agent_id);
 CREATE INDEX IF NOT EXISTS idx_call_summaries_created_at ON call_summaries(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_call_summaries_caller ON call_summaries(caller_id_number);
+
+-- Create index for change detection
+CREATE INDEX IF NOT EXISTS idx_agents_updated_at ON agents(updated_at);

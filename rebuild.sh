@@ -8,7 +8,12 @@ if [ -d "signalwire-agents" ]; then
     SDK_MTIME=$(find signalwire-agents -name "*.py" -type f -exec stat -c '%Y' {} \; | sort -n | tail -1)
     echo "🔍 SDK latest change timestamp: $SDK_MTIME"
     docker-compose build --build-arg SDK_CACHE_BUST=$SDK_MTIME app
-    docker-compose up -d
+    if [ $? -eq 0 ] ; then
+	docker-compose up -d
+    else
+	echo "ERROR: The build did not work.";
+	exit -1;
+    fi
 else
     docker-compose up --build -d
 fi

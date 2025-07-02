@@ -60,6 +60,7 @@ RUN npm run build
 # Layer 5: Backend application code
 WORKDIR /app
 COPY backend/ ./backend/
+COPY scripts/ ./scripts/
 
 # Layer 6: Configuration files
 COPY docker/nginx.conf /etc/nginx/sites-available/default

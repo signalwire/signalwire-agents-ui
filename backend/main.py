@@ -9,7 +9,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from .core.config import settings
-from .api import auth, agents, swml, admin, swaig, skills, native_functions, skills_marketplace, skills_unified, skills_test, post_prompt
+from .api import auth, agents, swml, admin, swaig, skills, native_functions, skills_marketplace, skills_unified, skills_test, post_prompt, changes
 
 # Configure logging
 logging.basicConfig(
@@ -29,6 +29,12 @@ async def lifespan(app: FastAPI):
     logger.info("Starting SignalWire Agent Builder API")
     logger.info(f"Environment: {'DEBUG' if settings.debug else 'PRODUCTION'}")
     logger.info(f"Database: {settings.database_url.split('@')[1] if '@' in settings.database_url else 'configured'}")
+    
+    # Run database migrations
+    from .core.migrations import run_migrations_on_startup
+    logger.info("Running database migrations...")
+    await run_migrations_on_startup()
+    
     yield
     logger.info("Shutting down SignalWire Agent Builder API")
 
@@ -68,6 +74,7 @@ app.include_router(skills_marketplace.router)  # Skills marketplace endpoint
 app.include_router(skills_unified.router, prefix="/api/skills/unified")  # Unified skills endpoint
 app.include_router(skills_test.router)  # Skills testing endpoint
 app.include_router(post_prompt.router)  # Post-prompt handler endpoint
+app.include_router(changes.router, prefix="/api")  # SSE changes endpoint
 
 # Health check endpoint
 @app.get("/api/health")

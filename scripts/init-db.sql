@@ -20,7 +20,9 @@ CREATE TABLE IF NOT EXISTS agents (
     description TEXT,
     config JSONB NOT NULL DEFAULT '{}',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(255),
+    version INTEGER DEFAULT 1
 );
 
 -- Create settings table for admin configuration
@@ -70,6 +72,9 @@ CREATE TRIGGER update_settings_updated_at BEFORE UPDATE ON settings
 CREATE INDEX idx_audit_logs_user ON audit_logs(user_id);
 CREATE INDEX idx_audit_logs_timestamp ON audit_logs(timestamp DESC);
 CREATE INDEX idx_audit_logs_action ON audit_logs(action);
+
+-- Create index for change detection
+CREATE INDEX IF NOT EXISTS idx_agents_updated_at ON agents(updated_at);
 
 -- Insert default settings
 INSERT INTO settings (key, value) VALUES

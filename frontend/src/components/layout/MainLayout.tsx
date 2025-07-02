@@ -6,6 +6,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { useTheme } from '@/components/theme-provider'
 import { useState } from 'react'
 import { HelpModal } from '@/components/help/HelpModal'
+import { ChangeIndicator } from './ChangeIndicator'
 
 interface MainLayoutProps {
   children: React.ReactNode
@@ -70,6 +71,7 @@ export function MainLayout({ children }: MainLayoutProps) {
               <span className="text-xs sm:text-sm text-muted-foreground hidden lg:inline truncate max-w-[100px] sm:max-w-none">
                 {tokenName}
               </span>
+              <ChangeIndicator />
               <Button
                 variant="ghost"
                 size="icon"

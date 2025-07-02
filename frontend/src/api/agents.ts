@@ -60,6 +60,8 @@ export interface Agent {
   swml_url: string
   created_at: string
   updated_at: string
+  updated_by?: string
+  version?: number
 }
 
 export interface CreateAgentRequest {

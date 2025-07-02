@@ -73,6 +73,8 @@ class AgentResponse(BaseModel):
     swml_url: str
     created_at: datetime
     updated_at: datetime
+    updated_by: Optional[str] = None
+    version: Optional[int] = None
 
 
 def format_swml_url(agent_id: str, config: Dict[str, Any]) -> str:
@@ -103,7 +105,9 @@ async def list_agents(
             config=agent.config,
             swml_url=format_swml_url(str(agent.id), agent.config),
             created_at=agent.created_at,
-            updated_at=agent.updated_at
+            updated_at=agent.updated_at,
+            updated_by=agent.updated_by,
+            version=agent.version
         )
         for agent in agents
     ]
@@ -121,7 +125,8 @@ async def create_agent(
     agent = Agent(
         name=agent_data.name,
         description=agent_data.description,
-        config=agent_data.config.model_dump()
+        config=agent_data.config.model_dump(),
+        updated_by=str(auth_data["token"].id)
     )
     db.add(agent)
     await db.flush()  # Get the ID
@@ -151,7 +156,9 @@ async def create_agent(
         config=agent.config,
         swml_url=format_swml_url(str(agent.id), agent.config),
         created_at=agent.created_at,
-        updated_at=agent.updated_at
+        updated_at=agent.updated_at,
+        updated_by=agent.updated_by,
+        version=agent.version
     )
 
 
@@ -176,7 +183,9 @@ async def get_agent(
         config=agent.config,
         swml_url=format_swml_url(str(agent.id), agent.config),
         created_at=agent.created_at,
-        updated_at=agent.updated_at
+        updated_at=agent.updated_at,
+        updated_by=agent.updated_by,
+        version=agent.version
     )
 
 
@@ -212,6 +221,10 @@ async def update_agent(
         changes["config"] = {"old": agent.config, "new": agent_data.config.model_dump()}
         agent.config = agent_data.config.model_dump()
     
+    # Update metadata
+    agent.updated_by = str(auth_data["token"].id)
+    agent.version = (agent.version or 1) + 1
+    
     # Create audit log
     if changes:
         token = auth_data["token"]
@@ -237,7 +250,9 @@ async def update_agent(
         config=agent.config,
         swml_url=format_swml_url(str(agent.id), agent.config),
         created_at=agent.created_at,
-        updated_at=agent.updated_at
+        updated_at=agent.updated_at,
+        updated_by=agent.updated_by,
+        version=agent.version
     )
 
 
