@@ -87,7 +87,7 @@ export default function CallSummariesList({
         {summaries.map((summary) => (
           <Card 
             key={summary.id}
-            className="cursor-pointer hover:shadow-md transition-shadow"
+            className="cursor-pointer"
             onClick={() => setSelectedSummary(summary.id)}
           >
             <CardHeader>
