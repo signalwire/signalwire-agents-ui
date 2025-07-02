@@ -160,8 +160,14 @@ async def get_summary_detail(
     
     # Extract call log from raw data
     call_log = []
-    if summary.raw_data and "conversation" in summary.raw_data:
-        call_log = summary.raw_data["conversation"]
+    if summary.raw_data:
+        # Try different possible field names in order of preference:
+        # 1. raw_call_log - most complete log
+        # 2. call_log - cleaned/processed log
+        # 3. conversation - legacy field name
+        call_log = summary.raw_data.get("raw_call_log", 
+                   summary.raw_data.get("call_log", 
+                   summary.raw_data.get("conversation", [])))
     
     # Extract SWAIG log
     swaig_log = summary.swaig_log or []

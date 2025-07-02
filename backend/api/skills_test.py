@@ -12,6 +12,9 @@ from signalwire_agents import AgentBase
 from signalwire_agents.core.function_result import SwaigFunctionResult
 from ..auth import get_current_user
 
+# Import DataMap execution from SDK
+from signalwire_agents.cli.execution.datamap_exec import execute_datamap_function, simple_template_expand
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/skills/test", tags=["skills-test"])
@@ -111,36 +114,83 @@ async def test_skill_function(
         # Skills are automatically registered when added
         logs.append("Skills loaded and ready for testing")
         
-        # Create mock post_data for testing
-        post_data = create_test_post_data(request.function_name, request.test_args)
-        logs.append(f"Executing function '{request.function_name}' with args: {request.test_args}")
+        # Check if this is a DataMap function
+        is_datamap = False
+        datamap_config = None
         
-        # Execute the function
-        try:
-            # Call on_function_call - it might be sync or async
-            result = ephemeral_agent.on_function_call(
-                request.function_name,
-                request.test_args,
-                post_data
-            )
+        # Get the function from the agent's tool registry to check if it's DataMap
+        if hasattr(ephemeral_agent, '_tool_registry'):
+            all_functions = ephemeral_agent._tool_registry.get_all_functions()
+            func_obj = all_functions.get(request.function_name)
+            if isinstance(func_obj, dict) and 'data_map' in func_obj:
+                is_datamap = True
+                datamap_config = func_obj
+                logs.append(f"Function '{request.function_name}' is a DataMap function")
+        
+        if is_datamap:
+            # Execute DataMap function using SDK - this will make real HTTP calls
+            logs.append("Executing DataMap function with real API calls")
             
-            # If it's a coroutine, await it with timeout
-            if asyncio.iscoroutine(result):
-                result = await execute_with_timeout(result, timeout_seconds=30)
-        except asyncio.TimeoutError:
-            raise TimeoutError("Function execution timed out after 30 seconds")
+            try:
+                # Use the SDK's execute_datamap_function which handles all the logic
+                result_data = execute_datamap_function(
+                    datamap_config, 
+                    request.test_args,
+                    verbose=True  # Enable verbose for detailed logs
+                )
+                
+                # Convert result to SwaigFunctionResult
+                if isinstance(result_data, dict):
+                    result = SwaigFunctionResult(response=result_data.get('response', ''))
+                    if 'action' in result_data and isinstance(result_data['action'], list):
+                        result.add_actions(result_data['action'])
+                else:
+                    result = SwaigFunctionResult(response=str(result_data))
+                
+                logs.append("DataMap execution completed successfully")
+            except Exception as e:
+                logs.append(f"DataMap execution error: {str(e)}")
+                raise
+        else:
+            # Regular function execution
+            logs.append(f"Executing local function '{request.function_name}' with args: {request.test_args}")
+            
+            # Create mock post_data for testing
+            post_data = create_test_post_data(request.function_name, request.test_args)
+            
+            # Execute the function
+            try:
+                # Call on_function_call - it might be sync or async
+                result = ephemeral_agent.on_function_call(
+                    request.function_name,
+                    request.test_args,
+                    post_data
+                )
+                
+                # If it's a coroutine, await it with timeout
+                if asyncio.iscoroutine(result):
+                    result = await execute_with_timeout(result, timeout_seconds=30)
+            except asyncio.TimeoutError:
+                raise TimeoutError("Function execution timed out after 30 seconds")
         
         # Format the result
         execution_time = (datetime.now() - start_time).total_seconds()
         logs.append(f"Function executed successfully in {execution_time:.3f}s")
         
         if isinstance(result, SwaigFunctionResult):
+            # Format the action properly - it's a list in SwaigFunctionResult
+            action_value = "return"
+            if result.action and len(result.action) > 0:
+                # For testing, we'll just show the first action
+                action_value = result.action
+            
             return SkillTestResponse(
                 success=True,
                 result={
-                    "action": result.action or "return",
+                    "action": action_value,
                     "response": result.response,
-                    "metadata": getattr(result, 'metadata', {})
+                    "metadata": getattr(result, 'metadata', {}),
+                    "post_process": result.post_process
                 },
                 execution_time=execution_time,
                 logs=logs

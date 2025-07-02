@@ -461,8 +461,14 @@ async def get_summary_detail(
     
     # Extract call log from raw data
     call_log = []
-    if summary.raw_data and "conversation" in summary.raw_data:
-        call_log = summary.raw_data["conversation"]
+    if summary.raw_data:
+        # Try different possible field names in order of preference:
+        # 1. raw_call_log - most complete log
+        # 2. call_log - cleaned/processed log
+        # 3. conversation - legacy field name
+        call_log = summary.raw_data.get("raw_call_log", 
+                   summary.raw_data.get("call_log", 
+                   summary.raw_data.get("conversation", [])))
     
     return CallSummaryDetailResponse(
         id=summary.id,
@@ -481,7 +487,7 @@ async def get_summary_detail(
         total_cost=summary.total_cost,
         has_recording=bool(summary.raw_data and any(
             msg.get("type") == "recording" or msg.get("recording_url") is not None
-            for msg in summary.raw_data.get("conversation", [])
+            for msg in call_log
         )),
         created_at=summary.created_at,
         call_log=call_log,

@@ -20,7 +20,10 @@ interface Skill {
 interface SkillDefinition {
   name: string
   description: string
-  params: Array<{
+  supports_multiple_instances?: boolean
+  parameters?: Record<string, any>  // Parameters from unified endpoint
+  // Legacy params field for backward compatibility
+  params?: Array<{
     name: string
     type: string
     required?: boolean
@@ -32,7 +35,15 @@ interface SkillDefinition {
     max?: number
     enum?: string[]
   }>
-  functions: string[]
+  functions?: string[]
+  // Additional fields from unified endpoint
+  version?: string
+  display_name?: string
+  category?: string
+  tags?: string[]
+  installed?: boolean
+  enabled?: boolean
+  marketplace?: any
 }
 
 interface SkillsSelectorProps {
@@ -76,6 +87,22 @@ const FALLBACK_SKILLS: SkillDefinition[] = [
   },
 ]
 
+// Convert unified parameters to legacy params format
+function convertParametersToParams(parameters: Record<string, any>): Array<any> {
+  return Object.entries(parameters).map(([name, config]) => ({
+    name,
+    type: config.type || 'string',
+    required: config.required || false,
+    default: config.default,
+    description: config.description || name,
+    hidden: config.hidden || false,
+    env_var: config.env_var,
+    min: config.min,
+    max: config.max,
+    enum: config.enum
+  }))
+}
+
 export function SkillsSelector({ open, onClose, selectedSkills, onChange }: SkillsSelectorProps) {
   const [localSkills, setLocalSkills] = useState<Skill[]>(selectedSkills)
   const [searchTerm, setSearchTerm] = useState('')
@@ -96,8 +123,21 @@ export function SkillsSelector({ open, onClose, selectedSkills, onChange }: Skil
   const fetchAvailableSkills = async () => {
     try {
       setIsLoading(true)
-      const response = await api.get('/api/skills/')
-      setAvailableSkills(response.data)
+      const response = await api.get('/api/skills/unified/')
+      
+      // Convert unified response to component format
+      const skills = response.data.map((skill: any) => ({
+        ...skill,
+        // Convert parameters to legacy params format if not already present
+        params: skill.params || (skill.parameters ? convertParametersToParams(skill.parameters) : []),
+        // Extract functions from parameters if not provided
+        functions: skill.functions || (skill.parameters ? 
+          Object.keys(skill.parameters).filter(key => !['tool_name', 'api_key', 'search_engine_id'].includes(key)) : 
+          []
+        )
+      }))
+      
+      setAvailableSkills(skills)
     } catch (error) {
       console.error('Failed to load skills:', error)
       toast({
@@ -117,6 +157,12 @@ export function SkillsSelector({ open, onClose, selectedSkills, onChange }: Skil
   )
 
   const isSkillSelected = (skillName: string) => {
+    const skillDef = availableSkills.find(s => s.name === skillName)
+    // If skill supports multiple instances, it's never "selected" (can always add more)
+    if (skillDef?.supports_multiple_instances) {
+      return false
+    }
+    // For single-instance skills, check if already added
     return localSkills.some(s => s.name === skillName)
   }
 
@@ -130,7 +176,7 @@ export function SkillsSelector({ open, onClose, selectedSkills, onChange }: Skil
     }
 
     // Add default params if not provided
-    if (!params) {
+    if (!params && skillDef.params) {
       skillDef.params.forEach(param => {
         if (param.default !== undefined) {
           newSkill.params![param.name] = param.default
@@ -227,13 +273,22 @@ export function SkillsSelector({ open, onClose, selectedSkills, onChange }: Skil
                       {localSkills.map((skill, index) => {
                         const skillDef = availableSkills.find(s => s.name === skill.name)
                         const hasParams = skillDef?.params && skillDef.params.length > 0
+                        const instanceNumber = skillDef?.supports_multiple_instances ? 
+                          localSkills.slice(0, index + 1).filter(s => s.name === skill.name).length : 0
                         
                         return (
                           <Card key={index}>
                             <CardHeader className="pb-3">
-                              <div className="flex items-start justify-between">
+                              <div className="flex flex-col gap-3">
                                 <div className="space-y-1">
-                                  <CardTitle className="text-base">{skill.name}</CardTitle>
+                                  <CardTitle className="text-base">
+                                    {skill.name}
+                                    {instanceNumber > 0 && (
+                                      <span className="text-sm font-normal text-muted-foreground ml-2">
+                                        (Instance {instanceNumber})
+                                      </span>
+                                    )}
+                                  </CardTitle>
                                   <CardDescription>
                                     {skillDef?.description || 'No description available'}
                                   </CardDescription>
@@ -250,7 +305,7 @@ export function SkillsSelector({ open, onClose, selectedSkills, onChange }: Skil
                                     </div>
                                   )}
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex flex-wrap gap-2">
                                   <Button
                                     type="button"
                                     variant="outline"
@@ -290,7 +345,7 @@ export function SkillsSelector({ open, onClose, selectedSkills, onChange }: Skil
                                   <p className="text-xs font-medium mb-2">Current Configuration:</p>
                                   <div className="space-y-1">
                                     {Object.entries(skill.params).map(([key, value]) => {
-                                      const paramDef = skillDef?.params.find(p => p.name === key)
+                                      const paramDef = skillDef?.params?.find(p => p.name === key)
                                       const displayValue = paramDef?.hidden ? '••••••••' : String(value)
                                       return (
                                         <div key={key} className="flex justify-between text-xs">
@@ -339,6 +394,9 @@ export function SkillsSelector({ open, onClose, selectedSkills, onChange }: Skil
                       <div className="grid gap-4 md:grid-cols-2">
                         {filteredSkills.map((skill) => {
                           const selected = isSkillSelected(skill.name)
+                          const instanceCount = localSkills.filter(s => s.name === skill.name).length
+                          const hasInstances = instanceCount > 0
+                          
                           return (
                             <Card key={skill.name} className={selected ? 'opacity-60' : ''}>
                               <CardHeader>
@@ -347,9 +405,14 @@ export function SkillsSelector({ open, onClose, selectedSkills, onChange }: Skil
                                     <CardTitle className="text-base">{skill.name}</CardTitle>
                                     <CardDescription>{skill.description}</CardDescription>
                                   </div>
-                                  {selected && (
-                                    <Badge variant="secondary">Installed</Badge>
-                                  )}
+                                  <div className="flex gap-2">
+                                    {skill.supports_multiple_instances && hasInstances && (
+                                      <Badge variant="outline">{instanceCount} instance{instanceCount > 1 ? 's' : ''}</Badge>
+                                    )}
+                                    {selected && (
+                                      <Badge variant="secondary">Installed</Badge>
+                                    )}
+                                  </div>
                                 </div>
                               </CardHeader>
                               <CardContent>
@@ -373,7 +436,8 @@ export function SkillsSelector({ open, onClose, selectedSkills, onChange }: Skil
                                   className="w-full"
                                 >
                                   <Plus className="h-4 w-4 mr-2" />
-                                  {selected ? 'Already Installed' : 'Install Skill'}
+                                  {selected ? 'Already Installed' : 
+                                   skill.supports_multiple_instances && hasInstances ? 'Add Another Instance' : 'Install Skill'}
                                 </Button>
                               </CardContent>
                             </Card>
@@ -454,7 +518,7 @@ function SkillConfigDialog({ skill, skillDef, onSave, onClose }: SkillConfigDial
   // Initialize with defaults
   useEffect(() => {
     const defaultParams: Record<string, any> = {}
-    skillDef.params.forEach(param => {
+    skillDef.params?.forEach(param => {
       if (param.default !== undefined && params[param.name] === undefined) {
         defaultParams[param.name] = param.default
       }
@@ -466,7 +530,7 @@ function SkillConfigDialog({ skill, skillDef, onSave, onClose }: SkillConfigDial
 
   const handleSave = () => {
     // Validate required params
-    const missingRequired = skillDef.params
+    const missingRequired = (skillDef.params || [])
       .filter(p => p.required && !params[p.name])
       .map(p => p.description || p.name)
     
@@ -489,7 +553,7 @@ function SkillConfigDialog({ skill, skillDef, onSave, onClose }: SkillConfigDial
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {skillDef.params.length === 0 ? (
+          {!skillDef.params || skillDef.params.length === 0 ? (
             <p className="text-sm text-muted-foreground">This skill has no configurable parameters.</p>
           ) : (
             skillDef.params.map((param) => (
