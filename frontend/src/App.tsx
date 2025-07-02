@@ -7,6 +7,7 @@ import { AgentBuilderPage } from '@/pages/AgentBuilder'
 import { AdminPage } from '@/pages/Admin'
 import { SkillsMarketplacePage } from '@/pages/SkillsMarketplace'
 import { CallSummariesPage } from '@/pages/CallSummaries'
+import { AllCallSummariesPage } from '@/pages/AllCallSummaries'
 import { Toaster } from '@/components/ui/toaster'
 import { ThemeProvider } from '@/components/theme-provider'
 
@@ -58,6 +59,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <CallSummariesPage />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/call-summaries"
+            element={
+              <ProtectedRoute>
+                <AllCallSummariesPage />
               </ProtectedRoute>
             }
           />

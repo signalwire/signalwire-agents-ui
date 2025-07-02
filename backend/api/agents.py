@@ -358,6 +358,7 @@ class CallSummaryResponse(BaseModel):
     """Call summary response schema."""
     id: str
     agent_id: UUID
+    agent_name: str  # Added agent name
     call_id: str
     ai_session_id: Optional[str]
     call_start_date: Optional[int]
@@ -369,6 +370,7 @@ class CallSummaryResponse(BaseModel):
     total_input_tokens: Optional[int]
     total_output_tokens: Optional[int]
     total_cost: Optional[float]
+    has_recording: bool  # Added recording indicator
     created_at: datetime
 
 
@@ -410,6 +412,7 @@ async def get_agent_summaries(
         CallSummaryResponse(
             id=summary.id,
             agent_id=summary.agent_id,
+            agent_name=agent.name,  # Add agent name
             call_id=summary.call_id,
             ai_session_id=summary.ai_session_id,
             call_start_date=summary.call_start_date,
@@ -421,6 +424,10 @@ async def get_agent_summaries(
             total_input_tokens=summary.total_input_tokens,
             total_output_tokens=summary.total_output_tokens,
             total_cost=summary.total_cost,
+            has_recording=bool(summary.raw_data and any(
+                msg.get("type") == "recording" or msg.get("recording_url") is not None
+                for msg in summary.raw_data.get("conversation", [])
+            )),
             created_at=summary.created_at
         )
         for summary in summaries
@@ -449,9 +456,18 @@ async def get_summary_detail(
     if not summary:
         raise HTTPException(status_code=404, detail="Call summary not found")
     
+    # Get agent for name
+    agent = await db.get(Agent, agent_id)
+    
+    # Extract call log from raw data
+    call_log = []
+    if summary.raw_data and "conversation" in summary.raw_data:
+        call_log = summary.raw_data["conversation"]
+    
     return CallSummaryDetailResponse(
         id=summary.id,
         agent_id=summary.agent_id,
+        agent_name=agent.name if agent else "Unknown Agent",
         call_id=summary.call_id,
         ai_session_id=summary.ai_session_id,
         call_start_date=summary.call_start_date,
@@ -463,8 +479,12 @@ async def get_summary_detail(
         total_input_tokens=summary.total_input_tokens,
         total_output_tokens=summary.total_output_tokens,
         total_cost=summary.total_cost,
+        has_recording=bool(summary.raw_data and any(
+            msg.get("type") == "recording" or msg.get("recording_url") is not None
+            for msg in summary.raw_data.get("conversation", [])
+        )),
         created_at=summary.created_at,
-        call_log=summary.call_log or [],
+        call_log=call_log,
         swaig_log=summary.swaig_log or [],
         raw_data=summary.raw_data or {}
     )

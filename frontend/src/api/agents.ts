@@ -79,6 +79,7 @@ export interface UpdateAgentRequest {
 export interface CallSummary {
   id: string
   agent_id: string
+  agent_name: string
   call_id: string
   ai_session_id?: string
   call_start_date?: number
@@ -90,6 +91,7 @@ export interface CallSummary {
   total_input_tokens?: number
   total_output_tokens?: number
   total_cost?: number
+  has_recording: boolean
   created_at: string
 }
 
