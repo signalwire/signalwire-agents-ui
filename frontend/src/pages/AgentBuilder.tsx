@@ -32,6 +32,7 @@ import { ConfirmationDialog } from '@/components/ui/confirmation-dialog'
 import { SaveAsCopyDialog } from '@/components/agents/SaveAsCopyDialog'
 import { HelpTooltip } from '@/components/ui/help-tooltip'
 import { helpContent } from '@/lib/helpContent'
+import { LLMParamsCard } from '@/components/agents/LLMParamsCard'
 
 interface AgentForm {
   name: string
@@ -94,6 +95,8 @@ export function AgentBuilderPage() {
   }>({
     contexts: []
   })
+  const [promptLLMParams, setPromptLLMParams] = useState<Record<string, any>>({})
+  const [postPromptLLMParams, setPostPromptLLMParams] = useState<Record<string, any>>({})
   const [showPromptBuilder, setShowPromptBuilder] = useState(false)
   const [showSkillsSelector, setShowSkillsSelector] = useState(false)
   const [showParamsEditor, setShowParamsEditor] = useState(false)
@@ -254,6 +257,8 @@ export function AgentBuilderPage() {
   const setRecordingConfigWithTracking = trackChange(setRecordingConfig)
   const setPostPromptConfigWithTracking = trackChange(setPostPromptConfig)
   const setContextsStepsConfigWithTracking = trackChange(setContextsStepsConfig)
+  const setPromptLLMParamsWithTracking = trackChange(setPromptLLMParams)
+  const setPostPromptLLMParamsWithTracking = trackChange(setPostPromptLLMParams)
 
   // Fetch settings for voice options
   const { } = useQuery({
@@ -397,10 +402,19 @@ export function AgentBuilderPage() {
         setContextsStepsConfig(agent.config.contexts_steps_config)
       }
       
+      // Load LLM params
+      if (agent.config.prompt_llm_params) {
+        setPromptLLMParams(agent.config.prompt_llm_params)
+      }
+      if (agent.config.post_prompt_llm_params) {
+        setPostPromptLLMParams(agent.config.post_prompt_llm_params)
+      }
+      
       // Reset unsaved changes flag when agent is loaded
       setHasUnsavedChanges(false)
     }
   }, [agent, languageConfigs, setValue])
+
 
   // Get available presets based on selected presets
   const getAvailablePresets = () => {
@@ -467,6 +481,8 @@ export function AgentBuilderPage() {
         record_stereo: recordingConfig.stereo,
         post_prompt_config: postPromptConfig,
         contexts_steps_config: contextsStepsConfig,
+        prompt_llm_params: promptLLMParams,
+        post_prompt_llm_params: postPromptLLMParams,
       }
       return agentsApi.create({
         name: data.name,
@@ -518,6 +534,8 @@ export function AgentBuilderPage() {
         record_stereo: recordingConfig.stereo,
         post_prompt_config: postPromptConfig,
         contexts_steps_config: contextsStepsConfig,
+        prompt_llm_params: promptLLMParams,
+        post_prompt_llm_params: postPromptLLMParams,
       }
       
       return agentsApi.create({
@@ -595,7 +613,10 @@ export function AgentBuilderPage() {
         record_stereo: recordingConfig.stereo,
         post_prompt_config: postPromptConfig,
         contexts_steps_config: contextsStepsConfig,
+        prompt_llm_params: promptLLMParams,
+        post_prompt_llm_params: postPromptLLMParams,
       }
+      console.log('Updating agent with LLM params:', { promptLLMParams, postPromptLLMParams });
       console.log('Saving agent with post_prompt_config:', postPromptConfig);
       return agentsApi.update(id!, {
         name: data.name,
@@ -979,6 +1000,14 @@ export function AgentBuilderPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* LLM Parameters */}
+        <LLMParamsCard
+          promptParams={promptLLMParams}
+          postPromptParams={postPromptLLMParams}
+          onPromptParamsChange={setPromptLLMParamsWithTracking}
+          onPostPromptParamsChange={setPostPromptLLMParamsWithTracking}
+        />
 
         {/* Agent Configuration Cards */}
         <div className="grid gap-4 md:grid-cols-2">

@@ -126,6 +126,30 @@ async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=
     if internal_fillers := agent_config.get('internal_fillers'):
         agent.set_internal_fillers(internal_fillers)
     
+    # Set LLM parameters
+    if prompt_llm_params := agent_config.get('prompt_llm_params'):
+        logger.info(f"Setting prompt LLM params: {prompt_llm_params}")
+        agent.set_prompt_llm_params(
+            temperature=prompt_llm_params.get('temperature'),
+            top_p=prompt_llm_params.get('top_p'),
+            frequency_penalty=prompt_llm_params.get('frequency_penalty'),
+            presence_penalty=prompt_llm_params.get('presence_penalty'),
+            barge_confidence=prompt_llm_params.get('barge_confidence')
+        )
+    else:
+        logger.info("No prompt_llm_params in agent config")
+    
+    if post_prompt_llm_params := agent_config.get('post_prompt_llm_params'):
+        logger.info(f"Setting post-prompt LLM params: {post_prompt_llm_params}")
+        agent.set_post_prompt_llm_params(
+            temperature=post_prompt_llm_params.get('temperature'),
+            top_p=post_prompt_llm_params.get('top_p'),
+            frequency_penalty=post_prompt_llm_params.get('frequency_penalty'),
+            presence_penalty=post_prompt_llm_params.get('presence_penalty')
+        )
+    else:
+        logger.info("No post_prompt_llm_params in agent config")
+    
     # Configure contexts and steps
     if contexts_steps_config := agent_config.get('contexts_steps_config'):
         if contexts := contexts_steps_config.get('contexts'):

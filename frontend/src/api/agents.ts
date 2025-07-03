@@ -50,6 +50,8 @@ export interface AgentConfig {
   contexts_steps_config?: {
     contexts: any[]
   }
+  prompt_llm_params?: Record<string, any>
+  post_prompt_llm_params?: Record<string, any>
 }
 
 export interface Agent {

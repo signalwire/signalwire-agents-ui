@@ -48,6 +48,8 @@ class AgentConfig(BaseModel):
     record_stereo: bool = Field(default=True, description="Record in stereo")
     post_prompt_config: Optional[Dict[str, Any]] = Field(None, description="Post-prompt summary configuration")
     contexts_steps_config: Optional[Dict[str, Any]] = Field(None, description="Contexts and steps configuration")
+    prompt_llm_params: Optional[Dict[str, Any]] = Field(None, description="LLM parameters for main prompt")
+    post_prompt_llm_params: Optional[Dict[str, Any]] = Field(None, description="LLM parameters for post-prompt")
 
 
 class AgentCreate(BaseModel):
