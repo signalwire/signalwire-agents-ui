@@ -12,7 +12,7 @@ from .security import create_skill_jwt_token
 logger = logging.getLogger(__name__)
 
 
-def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=None) -> Dict[str, Any]:
+async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=None) -> Dict[str, Any]:
     """Generate a SWML document from agent configuration using the SDK.
     
     Args:
@@ -201,14 +201,54 @@ def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=None) 
             skill_name = skill_config.get('name')
             skill_params = skill_config.get('params', {})
             
-            # Resolve environment variables if we have a resolver
-            if env_resolver:
+            # Resolve environment variables if we have a db session
+            if db_session:
                 try:
+                    from sqlalchemy import select
+                    from ..models import EnvVar
+                    import asyncio
+                    
                     skill_class = skill_registry.get_skill_class(skill_name)
                     if hasattr(skill_class, 'get_parameter_schema'):
                         param_schema = skill_class.get_parameter_schema()
-                        skill_params = env_resolver.resolve_skill_params(skill_params, param_schema)
-                        logger.info(f"Resolved env vars for skill {skill_name}")
+                        
+                        # Manually resolve env vars for async context
+                        for param_name, schema in param_schema.items():
+                            env_var_name = schema.get('env_var')
+                            if env_var_name and param_name not in skill_params:
+                                # Check user-defined env vars
+                                from sqlalchemy.ext.asyncio import AsyncSession
+                                if isinstance(db_session, AsyncSession):
+                                    # Async session - use async query
+                                    result = await db_session.execute(select(EnvVar).where(EnvVar.name == env_var_name))
+                                    env_var = result.scalar_one_or_none()
+                                    if env_var:
+                                        skill_params[param_name] = env_var.value
+                                        logger.info(f"Using {env_var_name} from user-defined environment variables")
+                                    else:
+                                        # Check system env vars
+                                        system_value = os.environ.get(env_var_name)
+                                        if system_value:
+                                            skill_params[param_name] = system_value
+                                            logger.info(f"Using {env_var_name} from system environment")
+                                        elif schema.get('default') is not None:
+                                            skill_params[param_name] = schema.get('default')
+                                else:
+                                    # Sync session - can query directly
+                                    env_var = db_session.query(EnvVar).filter(EnvVar.name == env_var_name).first()
+                                    if env_var:
+                                        skill_params[param_name] = env_var.value
+                                        logger.info(f"Using {env_var_name} from user-defined environment variables")
+                                    else:
+                                        # Check system env vars
+                                        system_value = os.environ.get(env_var_name)
+                                        if system_value:
+                                            skill_params[param_name] = system_value
+                                            logger.info(f"Using {env_var_name} from system environment")
+                                        elif schema.get('default') is not None:
+                                            skill_params[param_name] = schema.get('default')
+                        
+                        logger.info(f"Resolved parameters for skill {skill_name}: {list(skill_params.keys())}")
                 except Exception as e:
                     logger.warning(f"Could not resolve env vars for skill {skill_name}: {e}")
             else:
@@ -244,7 +284,7 @@ def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=None) 
                 # Don't fall back to manual registration - let the SDK handle it
     
     # Configure post-prompt based on agent config
-    post_prompt_config = agent_config.get('post_prompt_config', {})
+    post_prompt_config = agent_config.get('post_prompt_config') or {}
     
     logger.info(f"Post-prompt config: {post_prompt_config}")
     
@@ -559,8 +599,7 @@ def generate_swml_manual(agent_config: Dict[str, Any], agent_id: str) -> Dict[st
                             }
                         },
                         "required": ["expression"]
-                    },
-                    "meta_data": {"token": token}
+                    }
                 })
             elif skill_name == "web_search":
                 functions.append({
@@ -575,8 +614,7 @@ def generate_swml_manual(agent_config: Dict[str, Any], agent_id: str) -> Dict[st
                             }
                         },
                         "required": ["query"]
-                    },
-                    "meta_data": {"token": token}
+                    }
                 })
             elif skill_name == "weather":
                 functions.append({
@@ -591,8 +629,7 @@ def generate_swml_manual(agent_config: Dict[str, Any], agent_id: str) -> Dict[st
                             }
                         },
                         "required": ["location"]
-                    },
-                    "meta_data": {"token": token}
+                    }
                 })
         
         if functions:
@@ -601,7 +638,7 @@ def generate_swml_manual(agent_config: Dict[str, Any], agent_id: str) -> Dict[st
     ai_config["SWAIG"] = swaig_config
     
     # Add post-prompt based on agent config
-    post_prompt_config = agent_config.get('post_prompt_config', {})
+    post_prompt_config = agent_config.get('post_prompt_config') or {}
     
     # Check if post-prompt is enabled (either new format or legacy)
     post_prompt_enabled = (

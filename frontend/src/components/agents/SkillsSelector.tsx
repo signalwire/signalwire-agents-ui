@@ -552,7 +552,19 @@ function SkillConfigDialog({ skill, skillDef, onSave, onClose }: SkillConfigDial
   const handleSave = () => {
     // Validate required params
     const missingRequired = (skillDef.params || [])
-      .filter(p => p.required && !params[p.name])
+      .filter(p => {
+        // If param is not required, skip validation
+        if (!p.required) return false
+        
+        // If param has a value, it's not missing
+        if (params[p.name]) return false
+        
+        // If param has an env_var that's set, it's not missing
+        if (p.env_var && envVarStatus[p.name]?.is_set) return false
+        
+        // Otherwise it's missing
+        return true
+      })
       .map(p => p.description || p.name)
     
     if (missingRequired.length > 0) {
@@ -602,7 +614,14 @@ function SkillConfigDialog({ skill, skillDef, onSave, onClose }: SkillConfigDial
                         ...params,
                         [param.name]: param.type === 'number' ? Number(e.target.value) : e.target.value
                       })}
-                      placeholder={param.default !== undefined ? `Default: ${param.default}` : 'Enter value'}
+                      placeholder={
+                        envVarStatus[param.name]?.is_set 
+                          ? `Using ${param.env_var} from ${envVarStatus[param.name].source === 'user' ? 'config' : 'system'}`
+                          : param.default !== undefined 
+                            ? `Default: ${param.default}` 
+                            : 'Enter value'
+                      }
+                      autoComplete={param.hidden ? "new-password" : "off"}
                     />
                     {param.env_var && (
                       <div className="space-y-1">

@@ -89,7 +89,7 @@ async def get_agent_swml(
                     )
     
     # Generate SWML with db session for env var resolution
-    swml = generate_swml(agent.config, str(agent.id), db)
+    swml = await generate_swml(agent.config, str(agent.id), db)
     
     # Return as JSON with proper content type
     return JSONResponse(

@@ -10,6 +10,7 @@ import { toast } from '@/components/ui/use-toast'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { ConfirmationDialog } from '@/components/ui/confirmation-dialog'
 
 interface EnvVar {
   id: number
@@ -28,6 +29,7 @@ export function EnvVarsTab() {
   const [editingVar, setEditingVar] = useState<EnvVar | null>(null)
   const [revealedVars, setRevealedVars] = useState<Set<number>>(new Set())
   const [copiedVar, setCopiedVar] = useState<number | null>(null)
+  const [deletingVar, setDeletingVar] = useState<EnvVar | null>(null)
   
   // Form state
   const [formData, setFormData] = useState({
@@ -117,22 +119,22 @@ export function EnvVarsTab() {
     }
   }
 
-  const handleDelete = async (envVar: EnvVar) => {
-    if (!confirm(`Are you sure you want to delete ${envVar.name}?`)) {
-      return
-    }
+  const handleDelete = async () => {
+    if (!deletingVar) return
     
     try {
-      await api.delete(`/api/env-vars/${envVar.id}`)
+      await api.delete(`/api/env-vars/${deletingVar.id}`)
       toast({
         title: 'Environment variable deleted'
       })
+      setDeletingVar(null)
       fetchEnvVars()
     } catch (error) {
       toast({
         title: 'Failed to delete environment variable',
         variant: 'destructive'
       })
+      setDeletingVar(null)
     }
   }
 
@@ -239,7 +241,7 @@ export function EnvVarsTab() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleDelete(envVar)}
+                      onClick={() => setDeletingVar(envVar)}
                       className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -310,6 +312,7 @@ export function EnvVarsTab() {
                     onChange={(e) => setFormData({ ...formData, name: e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_') })}
                     placeholder="OPENAI_API_KEY"
                     className="font-mono"
+                    autoComplete="off"
                   />
                   <p className="text-xs text-muted-foreground">
                     Use uppercase letters, numbers, and underscores only
@@ -331,6 +334,7 @@ export function EnvVarsTab() {
                 value={formData.value}
                 onChange={(e) => setFormData({ ...formData, value: e.target.value })}
                 placeholder="Enter the value"
+                autoComplete="new-password"
               />
             </div>
 
@@ -370,6 +374,18 @@ export function EnvVarsTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        open={!!deletingVar}
+        onOpenChange={(open) => !open && setDeletingVar(null)}
+        title="Delete Environment Variable"
+        description={`Are you sure you want to delete ${deletingVar?.name}? This action cannot be undone. Any skills using this environment variable will need to be reconfigured.`}
+        actionLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={handleDelete}
+        variant="destructive"
+      />
     </div>
   )
 }

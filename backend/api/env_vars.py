@@ -174,6 +174,29 @@ async def check_env_var(
     current_user = Depends(get_current_user)
 ):
     """Check if an environment variable exists and its source."""
-    resolver = EnvVarResolver(db)
-    status = resolver.get_env_var_status(name)
-    return EnvVarStatusResponse(**status)
+    # Check user-defined env vars first
+    result = await db.execute(select(EnvVar).where(EnvVar.name == name))
+    env_var = result.scalar_one_or_none()
+    
+    if env_var:
+        return EnvVarStatusResponse(
+            exists=True,
+            source="user",
+            is_set=True
+        )
+    
+    # Check system env vars
+    import os
+    if os.environ.get(name):
+        return EnvVarStatusResponse(
+            exists=True,
+            source="system",
+            is_set=True
+        )
+    
+    # Not found
+    return EnvVarStatusResponse(
+        exists=False,
+        source=None,
+        is_set=False
+    )
