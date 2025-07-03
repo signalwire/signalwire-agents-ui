@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { api } from '@/lib/api'
 import { toast } from '@/components/ui/use-toast'
 import { TestSkillDialog } from './TestSkillDialog'
+import { FillersEditor } from './FillersEditor'
 
 interface Skill {
   name: string
@@ -558,24 +559,37 @@ function SkillConfigDialog({ skill, skillDef, onSave, onClose }: SkillConfigDial
           ) : (
             skillDef.params.map((param) => (
               <div key={param.name} className="space-y-2">
-                <Label>
-                  {param.description || param.name}
-                  {param.required && <span className="text-destructive ml-1">*</span>}
-                  {!param.required && <span className="text-muted-foreground ml-1">(optional)</span>}
-                </Label>
-                <Input
-                  type={param.type === 'number' ? 'number' : param.hidden ? 'password' : 'text'}
-                  value={params[param.name] || ''}
-                  onChange={(e) => setParams({
-                    ...params,
-                    [param.name]: param.type === 'number' ? Number(e.target.value) : e.target.value
-                  })}
-                  placeholder={param.default !== undefined ? `Default: ${param.default}` : 'Enter value'}
-                />
-                {param.env_var && (
-                  <p className="text-xs text-muted-foreground">
-                    Can also be set via environment variable: <code className="bg-muted px-1 rounded">{param.env_var}</code>
-                  </p>
+                {param.name === 'swaig_fields' ? (
+                  <FillersEditor
+                    value={params[param.name] || {}}
+                    onChange={(value) => setParams({
+                      ...params,
+                      [param.name]: value
+                    })}
+                    skillType={skill.name}
+                  />
+                ) : (
+                  <>
+                    <Label>
+                      {param.description || param.name}
+                      {param.required && <span className="text-destructive ml-1">*</span>}
+                      {!param.required && <span className="text-muted-foreground ml-1">(optional)</span>}
+                    </Label>
+                    <Input
+                      type={param.type === 'number' ? 'number' : param.hidden ? 'password' : 'text'}
+                      value={params[param.name] || ''}
+                      onChange={(e) => setParams({
+                        ...params,
+                        [param.name]: param.type === 'number' ? Number(e.target.value) : e.target.value
+                      })}
+                      placeholder={param.default !== undefined ? `Default: ${param.default}` : 'Enter value'}
+                    />
+                    {param.env_var && (
+                      <p className="text-xs text-muted-foreground">
+                        Can also be set via environment variable: <code className="bg-muted px-1 rounded">{param.env_var}</code>
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
             ))
