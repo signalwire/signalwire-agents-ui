@@ -226,7 +226,7 @@ export function SkillsSelector({ open, onClose, selectedSkills, onChange }: Skil
             </DialogDescription>
           </DialogHeader>
 
-          <Tabs defaultValue="installed" className="flex-1 flex flex-col">
+          <Tabs defaultValue="installed" className="flex-1 flex flex-col overflow-hidden">
             <TabsList className="mx-6 grid w-auto grid-cols-2 self-start">
               <TabsTrigger value="installed" className="gap-2">
                 <Package2 className="h-4 w-4" />
@@ -373,9 +373,9 @@ export function SkillsSelector({ open, onClose, selectedSkills, onChange }: Skil
             </TabsContent>
 
             <TabsContent value="marketplace" className="flex-1 overflow-hidden px-6 mt-6">
-              <div className="space-y-4">
+              <div className="h-full flex flex-col">
                 {/* Search */}
-                <div className="relative">
+                <div className="relative mb-4">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     value={searchTerm}
@@ -385,7 +385,7 @@ export function SkillsSelector({ open, onClose, selectedSkills, onChange }: Skil
                   />
                 </div>
 
-                <ScrollArea className="h-[calc(100vh-320px)]">
+                <ScrollArea className="flex-1">
                   <div className="space-y-4 pb-4 pr-4">
                     {isLoading ? (
                       <div className="flex items-center justify-center py-12">
