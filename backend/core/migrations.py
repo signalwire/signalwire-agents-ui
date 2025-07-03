@@ -10,19 +10,28 @@ logger = logging.getLogger(__name__)
 # List of migration files to run in order
 MIGRATIONS = [
     "add-post-prompt-columns.sql",
+    "add-env-vars-table.sql",
     # Add new migrations here
 ]
 
 
 async def run_migrations(db: AsyncSession):
     """Run all pending database migrations."""
-    scripts_dir = Path(__file__).parent.parent.parent / "scripts"
-    # Also try the mounted scripts directory
-    if not scripts_dir.exists():
-        scripts_dir = Path("/app/scripts")
+    # Try multiple paths for migrations
+    possible_dirs = [
+        Path(__file__).parent.parent / "migrations",  # backend/migrations
+        Path("/app/backend/migrations"),  # Absolute path in container
+        Path(__file__).parent.parent.parent / "scripts",  # Legacy scripts path
+        Path("/app/scripts"),  # Legacy mounted scripts directory
+    ]
     
     for migration_file in MIGRATIONS:
-        migration_path = scripts_dir / migration_file
+        migration_path = None
+        for dir_path in possible_dirs:
+            candidate = dir_path / migration_file
+            if candidate.exists():
+                migration_path = candidate
+                break
         
         if not migration_path.exists():
             logger.warning(f"Migration file not found: {migration_file}")

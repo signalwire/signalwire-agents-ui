@@ -88,8 +88,8 @@ async def get_agent_swml(
                         headers={"WWW-Authenticate": "Basic"},
                     )
     
-    # Generate SWML
-    swml = generate_swml(agent.config, str(agent.id))
+    # Generate SWML with db session for env var resolution
+    swml = generate_swml(agent.config, str(agent.id), db)
     
     # Return as JSON with proper content type
     return JSONResponse(

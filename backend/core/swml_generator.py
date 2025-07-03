@@ -5,14 +5,21 @@ import logging
 import os
 
 from signalwire_agents import AgentBase
+from signalwire_agents.skills.registry import skill_registry
 from .config import settings
 from .security import create_skill_jwt_token
 
 logger = logging.getLogger(__name__)
 
 
-def generate_swml(agent_config: Dict[str, Any], agent_id: str) -> Dict[str, Any]:
-    """Generate a SWML document from agent configuration using the SDK."""
+def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=None) -> Dict[str, Any]:
+    """Generate a SWML document from agent configuration using the SDK.
+    
+    Args:
+        agent_config: Agent configuration dict
+        agent_id: Agent ID string
+        db_session: Optional database session for env var resolution
+    """
     
     # Create an ephemeral agent with the name and recording settings
     agent_name = agent_config.get('name', 'Agent')
@@ -184,38 +191,51 @@ def generate_swml(agent_config: Dict[str, Any], agent_id: str) -> Dict[str, Any]
     
     # Add skills using the proper SDK method
     if skills := agent_config.get('skills'):
+        # Import env resolver if we have a db session
+        env_resolver = None
+        if db_session:
+            from .env_var_resolver import EnvVarResolver
+            env_resolver = EnvVarResolver(db_session)
+        
         for skill_config in skills:
             skill_name = skill_config.get('name')
             skill_params = skill_config.get('params', {})
             
-            # Don't add per-skill tokens anymore - we use global_data
-            skill_params_with_auth = skill_params.copy()
-            
-            # For skills that can use environment variables, check if params are missing
-            # and env vars are available
-            if skill_name == 'web_search':
-                if not skill_params_with_auth.get('api_key'):
-                    api_key = os.getenv('GOOGLE_API_KEY')
-                    if api_key:
-                        skill_params_with_auth['api_key'] = api_key
-                        logger.info("Using GOOGLE_API_KEY from environment")
-                if not skill_params_with_auth.get('search_engine_id'):
-                    search_engine_id = os.getenv('GOOGLE_SEARCH_ENGINE_ID')
-                    if search_engine_id:
-                        skill_params_with_auth['search_engine_id'] = search_engine_id
-                        logger.info("Using GOOGLE_SEARCH_ENGINE_ID from environment")
-            
-            elif skill_name == 'weather_api':
-                if not skill_params_with_auth.get('api_key'):
-                    api_key = os.getenv('OPENWEATHERMAP_API_KEY')
-                    if api_key:
-                        skill_params_with_auth['api_key'] = api_key
-                        logger.info("Using OPENWEATHERMAP_API_KEY from environment")
+            # Resolve environment variables if we have a resolver
+            if env_resolver:
+                try:
+                    skill_class = skill_registry.get_skill_class(skill_name)
+                    if hasattr(skill_class, 'get_parameter_schema'):
+                        param_schema = skill_class.get_parameter_schema()
+                        skill_params = env_resolver.resolve_skill_params(skill_params, param_schema)
+                        logger.info(f"Resolved env vars for skill {skill_name}")
+                except Exception as e:
+                    logger.warning(f"Could not resolve env vars for skill {skill_name}: {e}")
+            else:
+                # Fall back to old method if no db session
+                if skill_name == 'web_search':
+                    if not skill_params.get('api_key'):
+                        api_key = os.getenv('GOOGLE_API_KEY')
+                        if api_key:
+                            skill_params['api_key'] = api_key
+                            logger.info("Using GOOGLE_API_KEY from environment")
+                    if not skill_params.get('search_engine_id'):
+                        search_engine_id = os.getenv('GOOGLE_SEARCH_ENGINE_ID')
+                        if search_engine_id:
+                            skill_params['search_engine_id'] = search_engine_id
+                            logger.info("Using GOOGLE_SEARCH_ENGINE_ID from environment")
+                
+                elif skill_name == 'weather_api':
+                    if not skill_params.get('api_key'):
+                        api_key = os.getenv('OPENWEATHERMAP_API_KEY')
+                        if api_key:
+                            skill_params['api_key'] = api_key
+                            logger.info("Using OPENWEATHERMAP_API_KEY from environment")
             
             try:
                 # Use the SDK's proper add_skill method
                 # The SDK will handle skill loading and configuration
-                agent.add_skill(skill_name, skill_params_with_auth)
+                agent.add_skill(skill_name, skill_params)
                 logger.info(f"Successfully added skill: {skill_name}")
                 
             except Exception as e:

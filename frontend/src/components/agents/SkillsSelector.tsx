@@ -515,15 +515,35 @@ interface SkillConfigDialogProps {
 
 function SkillConfigDialog({ skill, skillDef, onSave, onClose }: SkillConfigDialogProps) {
   const [params, setParams] = useState<Record<string, any>>(skill.params || {})
+  const [envVarStatus, setEnvVarStatus] = useState<Record<string, any>>({})
 
-  // Initialize with defaults
+  // Initialize with defaults and check env var status
   useEffect(() => {
     const defaultParams: Record<string, any> = {}
-    skillDef.params?.forEach(param => {
-      if (param.default !== undefined && params[param.name] === undefined) {
-        defaultParams[param.name] = param.default
+    const checkEnvVars = async () => {
+      const status: Record<string, any> = {}
+      
+      for (const param of skillDef.params || []) {
+        if (param.default !== undefined && params[param.name] === undefined) {
+          defaultParams[param.name] = param.default
+        }
+        
+        // Check env var status if specified
+        if (param.env_var) {
+          try {
+            const response = await api.get(`/api/env-vars/check/${param.env_var}`)
+            status[param.name] = response.data
+          } catch (error) {
+            status[param.name] = { exists: false, source: null, is_set: false }
+          }
+        }
       }
-    })
+      
+      setEnvVarStatus(status)
+    }
+    
+    checkEnvVars()
+    
     if (Object.keys(defaultParams).length > 0) {
       setParams(prev => ({ ...defaultParams, ...prev }))
     }
@@ -585,9 +605,16 @@ function SkillConfigDialog({ skill, skillDef, onSave, onClose }: SkillConfigDial
                       placeholder={param.default !== undefined ? `Default: ${param.default}` : 'Enter value'}
                     />
                     {param.env_var && (
-                      <p className="text-xs text-muted-foreground">
-                        Can also be set via environment variable: <code className="bg-muted px-1 rounded">{param.env_var}</code>
-                      </p>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">
+                          Environment variable: <code className="bg-muted px-1 rounded">{param.env_var}</code>
+                        </p>
+                        {envVarStatus[param.name]?.is_set && (
+                          <p className="text-xs text-green-600 dark:text-green-400">
+                            ✓ Using value from {envVarStatus[param.name].source === 'user' ? 'configured' : 'system'} environment variable
+                          </p>
+                        )}
+                      </div>
                     )}
                   </>
                 )}

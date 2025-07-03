@@ -6,11 +6,16 @@ import logging
 import json
 import uuid
 import asyncio
+import os
 from datetime import datetime
+from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 from signalwire_agents import AgentBase
 from signalwire_agents.core.function_result import SwaigFunctionResult
 from ..auth import get_current_user
+from ..core.database import get_db
+from ..models import EnvVar
 
 # Import DataMap execution from SDK
 from signalwire_agents.cli.execution.datamap_exec import execute_datamap_function, simple_template_expand
@@ -81,7 +86,8 @@ async def execute_with_timeout(coro, timeout_seconds=30):
 @router.post("/", response_model=SkillTestResponse)
 async def test_skill_function(
     request: SkillTestRequest,
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
 ) -> SkillTestResponse:
     """Test a skill function using an ephemeral agent."""
     
@@ -99,10 +105,41 @@ async def test_skill_function(
         logs.append(f"Creating test agent: {agent_name}")
         ephemeral_agent = AgentBase(name=agent_name)
         
-        # Add the skill
-        logs.append(f"Adding skill '{request.skill_name}' with params: {list(request.skill_params.keys())}")
+        # Resolve environment variables for skill parameters
+        # For async sessions, we need to manually resolve env vars
+        from signalwire_agents.skills.registry import skill_registry
+        skill_class = skill_registry.get_skill_class(request.skill_name)
+        resolved_params = request.skill_params.copy()
+        
+        if hasattr(skill_class, 'get_parameter_schema'):
+            param_schema = skill_class.get_parameter_schema()
+            
+            # Manually resolve env vars for async context
+            for param_name, schema in param_schema.items():
+                env_var_name = schema.get('env_var')
+                if env_var_name and param_name not in request.skill_params:
+                    # Check user-defined env vars
+                    result = await db.execute(select(EnvVar).where(EnvVar.name == env_var_name))
+                    env_var = result.scalar_one_or_none()
+                    if env_var:
+                        resolved_params[param_name] = env_var.value
+                        logs.append(f"Using {env_var_name} from user-defined environment variables")
+                    else:
+                        # Check system env vars
+                        system_value = os.environ.get(env_var_name)
+                        if system_value:
+                            resolved_params[param_name] = system_value
+                            logs.append(f"Using {env_var_name} from system environment")
+                        elif schema.get('default') is not None:
+                            resolved_params[param_name] = schema.get('default')
+                            logs.append(f"Using default value for {param_name}")
+        
+        logs.append(f"Resolved skill parameters: {list(resolved_params.keys())}")
+        
+        # Add the skill with resolved parameters
+        logs.append(f"Adding skill '{request.skill_name}' with params: {list(resolved_params.keys())}")
         try:
-            ephemeral_agent.add_skill(request.skill_name, request.skill_params)
+            ephemeral_agent.add_skill(request.skill_name, resolved_params)
         except Exception as e:
             return SkillTestResponse(
                 success=False,
@@ -247,7 +284,8 @@ async def test_skill_function(
 async def get_skill_functions(
     skill_name: str,
     skill_params: Dict[str, Any] = {},
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
 ) -> SkillFunctionsResponse:
     """Get available functions for a skill."""
     
@@ -256,9 +294,34 @@ async def get_skill_functions(
         # Create an ephemeral agent to load the skill and get its functions
         ephemeral_agent = AgentBase(name=f"inspect-{skill_name}")
         
-        # Use the actual configured parameters from the agent
+        # Resolve environment variables for skill parameters
+        from signalwire_agents.skills.registry import skill_registry
+        skill_class = skill_registry.get_skill_class(skill_name)
+        resolved_params = skill_params.copy()
+        
+        if hasattr(skill_class, 'get_parameter_schema'):
+            param_schema = skill_class.get_parameter_schema()
+            
+            # Manually resolve env vars for async context
+            for param_name, schema in param_schema.items():
+                env_var_name = schema.get('env_var')
+                if env_var_name and param_name not in skill_params:
+                    # Check user-defined env vars
+                    result = await db.execute(select(EnvVar).where(EnvVar.name == env_var_name))
+                    env_var = result.scalar_one_or_none()
+                    if env_var:
+                        resolved_params[param_name] = env_var.value
+                    else:
+                        # Check system env vars
+                        system_value = os.environ.get(env_var_name)
+                        if system_value:
+                            resolved_params[param_name] = system_value
+                        elif schema.get('default') is not None:
+                            resolved_params[param_name] = schema.get('default')
+        
+        # Use the resolved parameters
         try:
-            ephemeral_agent.add_skill(skill_name, skill_params)
+            ephemeral_agent.add_skill(skill_name, resolved_params)
         except Exception as e:
             logger.error(f"Failed to add skill {skill_name}: {e}")
             raise HTTPException(

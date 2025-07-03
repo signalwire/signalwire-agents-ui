@@ -107,3 +107,29 @@ class AuditLog(Base):
     description = Column(Text, nullable=False)
     metadata_ = Column("metadata", JSON)
     timestamp = Column(DateTime, default=datetime.utcnow)
+
+
+class EnvVar(Base):
+    """User-defined environment variable."""
+    
+    __tablename__ = "env_vars"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), unique=True, nullable=False, index=True)
+    value = Column(Text, nullable=False)
+    description = Column(Text)
+    is_secret = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    def to_dict(self, reveal_secret=False):
+        """Convert to dictionary, optionally masking secret values."""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "value": self.value if not self.is_secret or reveal_secret else "••••••••",
+            "description": self.description,
+            "is_secret": self.is_secret,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
