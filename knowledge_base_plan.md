@@ -30,17 +30,78 @@ class KnowledgeBaseSkill:
         self.agent_id = agent_id
         self.collection_name = f"agent_{agent_id}_kb"
         self.db_session = db_session
-        # Embedding model loaded from singleton service
+        self.embedding_service = EmbeddingService()  # Singleton
         
     async def search_knowledge_base(self, query: str, count: int = 3) -> dict:
         """Search the agent's knowledge base"""
-        # Direct pgvector search implementation
-        # No network calls, direct DB access
+        # 1. Generate query embedding
+        query_embedding = self.embedding_service.get_model().encode(query)
+        
+        # 2. Direct pgvector similarity search
+        results = await self.db_session.execute(
+            text("""
+                SELECT 
+                    c.content,
+                    c.metadata,
+                    1 - (c.embedding <=> :query_embedding) as similarity
+                FROM kb_chunks c
+                JOIN kb_documents d ON c.document_id = d.id
+                JOIN kb_collections col ON d.collection_id = col.id
+                WHERE col.name = :collection_name
+                    AND d.status = 'completed'
+                ORDER BY c.embedding <=> :query_embedding
+                LIMIT :limit
+            """),
+            {
+                "query_embedding": query_embedding,
+                "collection_name": self.collection_name,
+                "limit": count
+            }
+        )
+        
+        # 3. Format results
+        chunks = results.fetchall()
+        if not chunks:
+            return {"answer": "No relevant information found in the knowledge base."}
+            
+        # 4. Combine relevant chunks into answer
+        combined_text = "\n\n".join([chunk.content for chunk in chunks])
+        return {
+            "answer": f"Based on the knowledge base:\n\n{combined_text}",
+            "metadata": {
+                "sources": [chunk.metadata for chunk in chunks],
+                "similarity_scores": [chunk.similarity for chunk in chunks]
+            }
+        }
 ```
 
 ### 2. Database Schema
 
+#### PostgreSQL Upgrade Requirements
+The existing PostgreSQL database needs to be upgraded to support pgvector:
+
+1. **Option A: Upgrade existing container** (Recommended)
+   - Switch from `postgres:15` to `pgvector/pgvector:pg16` image
+   - This image includes PostgreSQL 16 with pgvector pre-installed
+   - Minimal disruption to existing data
+
+2. **Option B: Manual installation**
+   - Keep existing PostgreSQL version
+   - Install pgvector extension manually
+   - Requires additional setup steps
+
+#### Database Connection
+Using existing database credentials from the app:
+- **Host**: `db` (internal Docker network)
+- **Port**: `5432`
+- **Database**: `agent_builder`
+- **User**: `agent_builder`
+- **Password**: From `DB_PASSWORD` env var (default: `changeme`)
+
 ```sql
+-- Migration to add pgvector support
+-- This will be run as part of Alembic migrations
+
 -- Enable extensions
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
@@ -343,8 +404,17 @@ async def handle_swaig_function(request: SwaigRequest, db: AsyncSession = Depend
     # ... existing code ...
     
     if request.function == "search_knowledge_base":
-        # Extract agent_id from request metadata
-        agent_id = request.meta_data.get("agent_id")
+        # Verify token and extract agent_id
+        token_data = verify_skill_token(request.meta_data.get("token"))
+        agent_id = token_data.get("agent_id")
+        
+        # Check if knowledge base is enabled for this agent
+        agent = await db.get(Agent, agent_id)
+        if not agent or not agent.config.get("knowledge_base", {}).get("enabled"):
+            return SwaigResponse(
+                action="return",
+                result="Knowledge base is not enabled for this agent."
+            )
         
         # Use our internal KB skill
         kb_skill = KnowledgeBaseSkill(agent_id, db)
@@ -363,12 +433,13 @@ async def handle_swaig_function(request: SwaigRequest, db: AsyncSession = Depend
 ## Implementation Steps
 
 ### Phase 1: Infrastructure (Week 1)
-1. Update Dockerfile to install `signalwire-agents[search-all]`
-2. Add database migrations for pgvector tables
-3. Create document storage directory structure
-4. Create embedding service singleton
-5. Set up background task queue for document processing
-6. Add file storage configuration to settings
+1. Update docker-compose.yml to use `pgvector/pgvector:pg16` image
+2. Update Dockerfile to install `signalwire-agents[search-all]`
+3. Add database migrations for pgvector extensions and tables
+4. Create document storage directory structure
+5. Create embedding service singleton
+6. Set up background task queue for document processing
+7. Add file storage configuration to settings
 
 ### Phase 2: Backend APIs (Week 1-2)
 1. Implement document upload endpoint
@@ -577,6 +648,21 @@ signalwire-agents[search-all]  # Includes all search features + pgvector support
 # - beautifulsoup4 (HTML processing)
 # - numpy (vector operations)
 # - And more...
+```
+
+## Docker Compose Update
+
+```yaml
+# Update docker-compose.yml
+services:
+  db:
+    # Change from postgres:15 to pgvector image
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: agent_builder
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+      POSTGRES_DB: agent_builder
+    # ... rest of config stays the same
 ```
 
 ## Success Metrics

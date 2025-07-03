@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   db:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg16
     restart: unless-stopped
     environment:
       POSTGRES_USER: agent_builder
@@ -35,6 +35,7 @@ services:
       SIGNALWIRE_JWT_SECRET: ${SIGNALWIRE_JWT_SECRET:-change-this-for-production}
     volumes:
       - app_logs:/app/logs
+      - kb_storage:/app/data/knowledge_base
     depends_on:
       db:
         condition: service_healthy
@@ -42,3 +43,4 @@ services:
 volumes:
   postgres_data:
   app_logs:
+  kb_storage:

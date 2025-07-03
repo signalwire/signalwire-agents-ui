@@ -50,6 +50,13 @@ export interface AgentConfig {
   contexts_steps_config?: {
     contexts: any[]
   }
+  knowledge_base?: {
+    enabled: boolean
+    search_count?: number
+    similarity_threshold?: number
+    chunk_size?: number
+    chunk_overlap?: number
+  }
   prompt_llm_params?: Record<string, any>
   post_prompt_llm_params?: Record<string, any>
 }

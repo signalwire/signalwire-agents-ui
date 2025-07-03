@@ -307,6 +307,29 @@ async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=
                 logger.warning(f"Could not add skill {skill_name}: {e}")
                 # Don't fall back to manual registration - let the SDK handle it
     
+    # Add knowledge base function if enabled
+    if agent_config.get('knowledge_base', {}).get('enabled', False):
+        logger.info("Knowledge base is enabled, adding search_knowledge_base function")
+        agent.register_swaig_function(
+            name="search_knowledge_base",
+            description="Search the agent's knowledge base for relevant information",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The search query"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "description": "Number of results to return",
+                        "default": 3
+                    }
+                },
+                "required": ["query"]
+            }
+        )
+    
     # Configure post-prompt based on agent config
     post_prompt_config = agent_config.get('post_prompt_config') or {}
     
@@ -658,6 +681,30 @@ def generate_swml_manual(agent_config: Dict[str, Any], agent_id: str) -> Dict[st
         
         if functions:
             swaig_config["functions"] = functions
+    
+    # Add knowledge base function if enabled
+    if agent_config.get('knowledge_base', {}).get('enabled', False):
+        if "functions" not in swaig_config:
+            swaig_config["functions"] = []
+        swaig_config["functions"].append({
+            "function": "search_knowledge_base",
+            "description": "Search the agent's knowledge base for relevant information",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The search query"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "description": "Number of results to return",
+                        "default": 3
+                    }
+                },
+                "required": ["query"]
+            }
+        })
     
     ai_config["SWAIG"] = swaig_config
     

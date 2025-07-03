@@ -140,6 +140,42 @@ async def handle_swaig_function(
     logger.info(f"SWAIG function call: agent={agent_id}, skill={skill_name}, function={request.function}")
     logger.info(f"SWAIG arguments: {request.argument}")
     
+    # Handle knowledge base search specially
+    if request.function == "search_knowledge_base":
+        # Get agent to check if KB is enabled
+        agent = await db.get(Agent, agent_id)
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        
+        if not agent.config.get("knowledge_base", {}).get("enabled", False):
+            return SWAIGResponse(
+                response="Knowledge base is not enabled for this agent."
+            )
+        
+        # Use the knowledge base skill directly
+        from ..skills.knowledge_base_skill import KnowledgeBaseSkill
+        kb_skill = KnowledgeBaseSkill(agent_id, db)
+        
+        # Extract arguments
+        actual_args = request.argument
+        if isinstance(actual_args, dict) and 'parsed' in actual_args:
+            parsed_args = actual_args.get('parsed', [])
+            if parsed_args and isinstance(parsed_args, list) and len(parsed_args) > 0:
+                actual_args = parsed_args[0]
+            else:
+                actual_args = {}
+        
+        # Perform search
+        result = await kb_skill.search_knowledge_base(
+            query=actual_args.get("query", ""),
+            count=actual_args.get("count", 3)
+        )
+        
+        return SWAIGResponse(
+            response=result["answer"],
+            action=None
+        )
+    
     # Create ephemeral agent
     ephemeral_agent = None
     try:

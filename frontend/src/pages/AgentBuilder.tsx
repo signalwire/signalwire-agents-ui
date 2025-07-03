@@ -28,6 +28,7 @@ import { NativeFunctionsConfig } from '@/components/agents/config/NativeFunction
 import { RecordingConfig } from '@/components/agents/config/RecordingConfig'
 import { PostPromptConfig } from '@/components/agents/config/PostPromptConfig'
 import { ContextsStepsConfig } from '@/components/agents/config/ContextsStepsConfig'
+import { KnowledgeBaseConfig } from '@/components/agents/config/KnowledgeBaseConfig'
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog'
 import { SaveAsCopyDialog } from '@/components/agents/SaveAsCopyDialog'
 import { HelpTooltip } from '@/components/ui/help-tooltip'
@@ -95,6 +96,17 @@ export function AgentBuilderPage() {
   }>({
     contexts: []
   })
+  const [knowledgeBaseConfig, setKnowledgeBaseConfig] = useState<{
+    enabled: boolean
+    search_count?: number
+    similarity_threshold?: number
+    chunk_size?: number
+    chunk_overlap?: number
+  }>({
+    enabled: false,
+    search_count: 3,
+    similarity_threshold: 0.0
+  })
   const [promptLLMParams, setPromptLLMParams] = useState<Record<string, any>>({})
   const [postPromptLLMParams, setPostPromptLLMParams] = useState<Record<string, any>>({})
   const [showPromptBuilder, setShowPromptBuilder] = useState(false)
@@ -111,6 +123,7 @@ export function AgentBuilderPage() {
   const [showRecordingConfig, setShowRecordingConfig] = useState(false)
   const [showPostPromptConfig, setShowPostPromptConfig] = useState(false)
   const [showContextsStepsConfig, setShowContextsStepsConfig] = useState(false)
+  const [showKnowledgeBaseConfig, setShowKnowledgeBaseConfig] = useState(false)
   const [selectedPresets, setSelectedPresets] = useState<string[]>([])
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [showDiscardDialog, setShowDiscardDialog] = useState(false)
@@ -225,6 +238,11 @@ export function AgentBuilderPage() {
         custom_url: agent.config.post_prompt_config?.custom_url
       })
       setContextsStepsConfig(agent.config.contexts_steps_config || { contexts: [] })
+      setKnowledgeBaseConfig(agent.config.knowledge_base || {
+        enabled: false,
+        search_count: 3,
+        similarity_threshold: 0.0
+      })
       
       // Reset change tracking
       setHasUnsavedChanges(false)
@@ -257,6 +275,7 @@ export function AgentBuilderPage() {
   const setRecordingConfigWithTracking = trackChange(setRecordingConfig)
   const setPostPromptConfigWithTracking = trackChange(setPostPromptConfig)
   const setContextsStepsConfigWithTracking = trackChange(setContextsStepsConfig)
+  const setKnowledgeBaseConfigWithTracking = trackChange(setKnowledgeBaseConfig)
   const setPromptLLMParamsWithTracking = trackChange(setPromptLLMParams)
   const setPostPromptLLMParamsWithTracking = trackChange(setPostPromptLLMParams)
 
@@ -401,6 +420,19 @@ export function AgentBuilderPage() {
       if (agent.config.contexts_steps_config) {
         setContextsStepsConfig(agent.config.contexts_steps_config)
       }
+      // Always set knowledge base config, even if it's just { enabled: false }
+      if (agent.config.knowledge_base) {
+        console.log('Loading knowledge_base config from agent:', agent.config.knowledge_base);
+        setKnowledgeBaseConfig(agent.config.knowledge_base)
+      } else {
+        // If no knowledge_base in config, ensure we reset to default disabled state
+        console.log('No knowledge_base config in agent, using default disabled state');
+        setKnowledgeBaseConfig({
+          enabled: false,
+          search_count: 3,
+          similarity_threshold: 0.0
+        })
+      }
       
       // Load LLM params
       if (agent.config.prompt_llm_params) {
@@ -481,6 +513,7 @@ export function AgentBuilderPage() {
         record_stereo: recordingConfig.stereo,
         post_prompt_config: postPromptConfig,
         contexts_steps_config: contextsStepsConfig,
+        knowledge_base: knowledgeBaseConfig,
         prompt_llm_params: promptLLMParams,
         post_prompt_llm_params: postPromptLLMParams,
       }
@@ -534,6 +567,7 @@ export function AgentBuilderPage() {
         record_stereo: recordingConfig.stereo,
         post_prompt_config: postPromptConfig,
         contexts_steps_config: contextsStepsConfig,
+        knowledge_base: knowledgeBaseConfig,
         prompt_llm_params: promptLLMParams,
         post_prompt_llm_params: postPromptLLMParams,
       }
@@ -613,11 +647,13 @@ export function AgentBuilderPage() {
         record_stereo: recordingConfig.stereo,
         post_prompt_config: postPromptConfig,
         contexts_steps_config: contextsStepsConfig,
+        knowledge_base: knowledgeBaseConfig,
         prompt_llm_params: promptLLMParams,
         post_prompt_llm_params: postPromptLLMParams,
       }
       console.log('Updating agent with LLM params:', { promptLLMParams, postPromptLLMParams });
       console.log('Saving agent with post_prompt_config:', postPromptConfig);
+      console.log('Saving agent with knowledge_base config:', knowledgeBaseConfig);
       return agentsApi.update(id!, {
         name: data.name,
         description: data.description,
@@ -1241,6 +1277,27 @@ export function AgentBuilderPage() {
               </p>
             </CardContent>
           </Card>
+
+          {/* Knowledge Base */}
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => setShowKnowledgeBaseConfig(true)}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between text-heading-card">
+                Knowledge Base
+                <FileText className="h-4 w-4" />
+              </CardTitle>
+              <CardDescription>
+                {knowledgeBaseConfig.enabled ? 'Knowledge base enabled' : 'Upload documents for AI reference'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Click to manage knowledge base documents
+              </p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Modals */}
@@ -1325,6 +1382,14 @@ export function AgentBuilderPage() {
           config={contextsStepsConfig}
           onChange={setContextsStepsConfigWithTracking}
           availableFunctions={skills.map(skill => skill.tool_name || skill.name)}
+        />
+
+        <KnowledgeBaseConfig
+          open={showKnowledgeBaseConfig}
+          onClose={() => setShowKnowledgeBaseConfig(false)}
+          config={knowledgeBaseConfig}
+          onChange={setKnowledgeBaseConfigWithTracking}
+          agentId={id}
         />
 
         {/* Confirmation Dialogs */}

@@ -1,0 +1,326 @@
+"""Document processor service for chunking and embedding documents."""
+import logging
+import asyncio
+from pathlib import Path
+from typing import List, Dict, Any, Optional
+from datetime import datetime
+import mimetypes
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import update, select
+import numpy as np
+
+from .embedding_service import EmbeddingService
+from ..models import KBDocument, KBChunk
+
+logger = logging.getLogger(__name__)
+
+
+class DocumentProcessor:
+    """Service for processing documents into searchable chunks."""
+    
+    def __init__(self, chunk_size: int = 512, chunk_overlap: int = 100):
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+        self.embedding_service = EmbeddingService()
+        
+        # Initialize supported file loaders
+        self._init_loaders()
+    
+    def _init_loaders(self):
+        """Initialize file loaders based on available packages."""
+        self.loaders = {}
+        
+        # Text files
+        self.loaders['.txt'] = self._load_text_file
+        self.loaders['.md'] = self._load_text_file
+        
+        # Try to load optional document processors
+        try:
+            import pdfplumber
+            self.loaders['.pdf'] = self._load_pdf_file
+        except ImportError:
+            logger.warning("pdfplumber not available. PDF support disabled.")
+        
+        try:
+            import docx
+            self.loaders['.docx'] = self._load_docx_file
+        except ImportError:
+            logger.warning("python-docx not available. DOCX support disabled.")
+        
+        # HTML
+        try:
+            from bs4 import BeautifulSoup
+            self.loaders['.html'] = self._load_html_file
+            self.loaders['.htm'] = self._load_html_file
+        except ImportError:
+            logger.warning("BeautifulSoup not available. HTML support disabled.")
+    
+    async def process_document(
+        self, 
+        file_path: str, 
+        document_id: str, 
+        agent_id: str,
+        db: AsyncSession,
+        sse_callback: Optional[callable] = None
+    ):
+        """
+        Process uploaded document into chunks with embeddings.
+        
+        Args:
+            file_path: Path to the uploaded file
+            document_id: Document ID in database
+            agent_id: Agent ID for SSE updates
+            db: Database session
+            sse_callback: Optional callback for SSE updates
+        """
+        try:
+            # Update status to 'processing'
+            await db.execute(
+                update(KBDocument)
+                .where(KBDocument.id == document_id)
+                .values(
+                    status='processing',
+                    processing_started_at=datetime.utcnow()
+                )
+            )
+            await db.commit()
+            
+            # Load document content
+            content = await self._load_document(file_path)
+            if not content:
+                raise ValueError("No content extracted from document")
+            
+            # Split into chunks
+            chunks = self._split_into_chunks(content)
+            chunk_count = len(chunks)
+            
+            # Update chunk count
+            await db.execute(
+                update(KBDocument)
+                .where(KBDocument.id == document_id)
+                .values(chunk_count=chunk_count)
+            )
+            await db.commit()
+            
+            # Process chunks in batches
+            batch_size = 10
+            for i in range(0, chunk_count, batch_size):
+                batch = chunks[i:i + batch_size]
+                
+                # Generate embeddings for batch
+                texts = [chunk['content'] for chunk in batch]
+                embeddings = self.embedding_service.encode(texts)
+                
+                # Store chunks with embeddings
+                for j, (chunk, embedding) in enumerate(zip(batch, embeddings)):
+                    kb_chunk = KBChunk(
+                        document_id=document_id,
+                        chunk_index=i + j,
+                        content=chunk['content'],
+                        embedding=embedding.tolist(),  # Convert numpy array to list
+                        document_metadata=chunk.get('metadata', {})
+                    )
+                    db.add(kb_chunk)
+                
+                # Update progress
+                chunks_processed = min(i + batch_size, chunk_count)
+                await db.execute(
+                    update(KBDocument)
+                    .where(KBDocument.id == document_id)
+                    .values(chunks_processed=chunks_processed)
+                )
+                await db.commit()
+                
+                # Send SSE update if callback provided
+                if sse_callback:
+                    progress = int((chunks_processed / chunk_count) * 100)
+                    await sse_callback(agent_id, document_id, "processing", progress)
+            
+            # Mark as completed
+            await db.execute(
+                update(KBDocument)
+                .where(KBDocument.id == document_id)
+                .values(
+                    status='completed',
+                    processed_at=datetime.utcnow(),
+                    chunks_processed=chunk_count
+                )
+            )
+            await db.commit()
+            
+            # Send completion SSE
+            if sse_callback:
+                await sse_callback(agent_id, document_id, "completed", 100)
+            
+            logger.info(f"Successfully processed document {document_id} with {chunk_count} chunks")
+            
+        except Exception as e:
+            logger.error(f"Failed to process document {document_id}: {e}")
+            
+            # Mark as failed
+            await db.execute(
+                update(KBDocument)
+                .where(KBDocument.id == document_id)
+                .values(
+                    status='failed',
+                    error_message=str(e)
+                )
+            )
+            await db.commit()
+            
+            # Send failure SSE
+            if sse_callback:
+                await sse_callback(agent_id, document_id, "failed", 0)
+    
+    async def _load_document(self, file_path: str) -> str:
+        """Load document content based on file type."""
+        path = Path(file_path)
+        suffix = path.suffix.lower()
+        
+        if suffix not in self.loaders:
+            # Try to detect MIME type
+            mime_type, _ = mimetypes.guess_type(file_path)
+            if mime_type and mime_type.startswith('text/'):
+                return await self._load_text_file(file_path)
+            else:
+                raise ValueError(f"Unsupported file type: {suffix}")
+        
+        loader = self.loaders[suffix]
+        return await loader(file_path)
+    
+    async def _load_text_file(self, file_path: str) -> str:
+        """Load plain text file."""
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except UnicodeDecodeError:
+            # Try with different encoding
+            with open(file_path, 'r', encoding='latin-1') as f:
+                return f.read()
+    
+    async def _load_pdf_file(self, file_path: str) -> str:
+        """Load PDF file content."""
+        import pdfplumber
+        
+        text_parts = []
+        with pdfplumber.open(file_path) as pdf:
+            for page in pdf.pages:
+                text = page.extract_text()
+                if text:
+                    text_parts.append(text)
+        
+        return '\n\n'.join(text_parts)
+    
+    async def _load_docx_file(self, file_path: str) -> str:
+        """Load Word document content."""
+        import docx
+        
+        doc = docx.Document(file_path)
+        text_parts = []
+        
+        for paragraph in doc.paragraphs:
+            if paragraph.text.strip():
+                text_parts.append(paragraph.text)
+        
+        return '\n\n'.join(text_parts)
+    
+    async def _load_html_file(self, file_path: str) -> str:
+        """Load HTML file content."""
+        from bs4 import BeautifulSoup
+        
+        with open(file_path, 'r', encoding='utf-8') as f:
+            soup = BeautifulSoup(f.read(), 'html.parser')
+        
+        # Remove script and style elements
+        for script in soup(["script", "style"]):
+            script.decompose()
+        
+        # Get text
+        text = soup.get_text()
+        
+        # Break into lines and remove leading/trailing space
+        lines = (line.strip() for line in text.splitlines())
+        # Break multi-headlines into a line each
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        # Drop blank lines
+        text = '\n'.join(chunk for chunk in chunks if chunk)
+        
+        return text
+    
+    def _split_into_chunks(self, text: str) -> List[Dict[str, Any]]:
+        """Split text into overlapping chunks."""
+        chunks = []
+        
+        # Simple sentence-based splitting
+        sentences = text.replace('\n', ' ').split('. ')
+        
+        current_chunk = []
+        current_length = 0
+        
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if not sentence:
+                continue
+            
+            sentence_length = len(sentence)
+            
+            # If adding this sentence exceeds chunk size, save current chunk
+            if current_length + sentence_length > self.chunk_size and current_chunk:
+                chunk_text = '. '.join(current_chunk) + '.'
+                chunks.append({
+                    'content': chunk_text,
+                    'metadata': {
+                        'chunk_index': len(chunks),
+                        'start_char': sum(len(c['content']) for c in chunks)
+                    }
+                })
+                
+                # Keep some overlap
+                overlap_sentences = []
+                overlap_length = 0
+                for sent in reversed(current_chunk):
+                    overlap_length += len(sent)
+                    if overlap_length >= self.chunk_overlap:
+                        break
+                    overlap_sentences.insert(0, sent)
+                
+                current_chunk = overlap_sentences
+                current_length = overlap_length
+            
+            current_chunk.append(sentence)
+            current_length += sentence_length
+        
+        # Add final chunk
+        if current_chunk:
+            chunk_text = '. '.join(current_chunk) + '.'
+            chunks.append({
+                'content': chunk_text,
+                'metadata': {
+                    'chunk_index': len(chunks),
+                    'start_char': sum(len(c['content']) for c in chunks)
+                }
+            })
+        
+        return chunks
+    
+    async def delete_document(self, document_id: str, db: AsyncSession) -> bool:
+        """
+        Delete document and all associated data.
+        
+        Returns:
+            True if deleted, False if not found
+        """
+        # Get document record
+        result = await db.execute(
+            select(KBDocument).where(KBDocument.id == document_id)
+        )
+        document = result.scalar_one_or_none()
+        
+        if not document:
+            return False
+        
+        # Delete will cascade to chunks
+        await db.delete(document)
+        await db.commit()
+        
+        return True

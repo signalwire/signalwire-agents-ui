@@ -1,10 +1,11 @@
 """Database models for the application."""
 from sqlalchemy import Column, String, Boolean, DateTime, JSON, Text, Float, Integer, BigInteger, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from datetime import datetime
 import uuid
+from pgvector.sqlalchemy import Vector
 
 from .core.database import Base
 
@@ -51,6 +52,7 @@ class Agent(Base):
     
     # Relationships
     call_summaries = relationship("CallSummary", back_populates="agent", cascade="all, delete-orphan")
+    kb_collection = relationship("KBCollection", uselist=False, cascade="all, delete-orphan")
 
 
 class Setting(Base):
@@ -133,3 +135,61 @@ class EnvVar(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+
+
+class KBCollection(Base):
+    """Knowledge base collection - one per agent."""
+    
+    __tablename__ = "kb_collections"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    agent_id = Column(UUID(as_uuid=True), ForeignKey("agents.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(255), unique=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    settings = Column(JSON, default={})
+    
+    # Relationships
+    documents = relationship("KBDocument", back_populates="collection", cascade="all, delete-orphan")
+
+
+class KBDocument(Base):
+    """Uploaded document with processing status."""
+    
+    __tablename__ = "kb_documents"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    collection_id = Column(UUID(as_uuid=True), ForeignKey("kb_collections.id", ondelete="CASCADE"), nullable=False)
+    filename = Column(String(255), nullable=False)
+    file_path = Column(String(512), nullable=False)
+    file_type = Column(String(50))
+    file_size = Column(Integer)
+    file_hash = Column(String(64), unique=True)
+    uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
+    processed_at = Column(DateTime(timezone=True))
+    processing_started_at = Column(DateTime(timezone=True))
+    status = Column(String(50), default='pending')  # pending, processing, completed, failed
+    error_message = Column(Text)
+    chunk_count = Column(Integer, default=0)
+    chunks_processed = Column(Integer, default=0)
+    document_metadata = Column(JSON, default={})
+    
+    # Relationships
+    collection = relationship("KBCollection", back_populates="documents")
+    chunks = relationship("KBChunk", back_populates="document", cascade="all, delete-orphan")
+
+
+class KBChunk(Base):
+    """Document chunk with vector embedding."""
+    
+    __tablename__ = "kb_chunks"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("kb_documents.id", ondelete="CASCADE"), nullable=False)
+    chunk_index = Column(Integer, nullable=False)
+    content = Column(Text, nullable=False)
+    embedding = Column(Vector(384))  # 384 dimensions for all-MiniLM-L6-v2
+    document_metadata = Column(JSON, default={})
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    document = relationship("KBDocument", back_populates="chunks")

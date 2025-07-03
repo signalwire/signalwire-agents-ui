@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 MIGRATIONS = [
     "add-post-prompt-columns.sql",
     "add-env-vars-table.sql",
+    "add-pgvector-knowledge-base.sql",
     # Add new migrations here
 ]
 

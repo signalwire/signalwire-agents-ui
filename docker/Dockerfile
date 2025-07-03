@@ -36,13 +36,16 @@ RUN python3.11 -m pip install --upgrade pip setuptools wheel
 
 # Install signalwire-agents - use local if present, otherwise from pip
 RUN if [ -d "./signalwire-agents" ]; then \
-        echo "Installing local signalwire-agents..." && \
-        python3.11 -m pip install --no-cache-dir -e ./signalwire-agents && \
+        echo "Installing local signalwire-agents with search-all..." && \
+        python3.11 -m pip install --no-cache-dir -e "./signalwire-agents[search-all]" && \
         python3.11 -m pip install --no-cache-dir signalwire-pom==2.7.1; \
     else \
-        echo "Installing signalwire-agents from pip..." && \
-        python3.11 -m pip install --no-cache-dir signalwire-agents>=1.0.0; \
+        echo "Installing signalwire-agents from pip with search-all..." && \
+        python3.11 -m pip install --no-cache-dir "signalwire-agents[search-all]>=1.0.0"; \
     fi
+
+# Download spaCy language model for NLP features
+RUN python3.11 -m spacy download en_core_web_sm
 
 # Layer 2b: Python dependencies (changes less frequently)
 COPY backend/requirements.txt ./backend/
@@ -68,7 +71,7 @@ COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY certs/ /certs/
 
 # Create necessary directories
-RUN mkdir -p /var/log/supervisor /var/log/nginx /app/logs
+RUN mkdir -p /var/log/supervisor /var/log/nginx /app/logs /app/data/knowledge_base
 
 # Set Python path
 ENV PYTHONPATH=/app

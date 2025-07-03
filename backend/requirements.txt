@@ -7,6 +7,7 @@ python-multipart==0.0.6
 sqlalchemy==2.0.23
 asyncpg==0.29.0
 psycopg2-binary==2.9.9
+pgvector==0.2.4
 
 # Authentication and security
 python-jose[cryptography]==3.3.0
@@ -35,3 +36,7 @@ python-dateutil==2.8.2
 
 # Server-Sent Events
 sse-starlette==1.8.2
+
+# File handling
+aiofiles==23.2.1
+werkzeug==3.0.1
