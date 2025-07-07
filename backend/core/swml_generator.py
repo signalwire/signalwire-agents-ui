@@ -180,11 +180,15 @@ async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=
                 
                 # Add context sections
                 for section in context.get('sections', []):
-                    context_obj.add_section(
-                        title=section.get('title', ''),
-                        content=section.get('content', ''),
-                        bullets=section.get('bullets')
-                    )
+                    title = section.get('title', 'Section')
+                    
+                    # Add section content if present
+                    if section.get('content'):
+                        context_obj.add_section(title, section.get('content'))
+                    
+                    # Add bullets if present
+                    if section.get('bullets') and len(section.get('bullets', [])) > 0:
+                        context_obj.add_bullets(title, section.get('bullets'))
                 
                 # Add enter fillers
                 if enter_fillers := context.get('enter_filler'):
@@ -198,11 +202,15 @@ async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=
                     
                     # Add step sections
                     for section in step.get('sections', []):
-                        step_obj.add_section(
-                            title=section.get('title', ''),
-                            content=section.get('content', ''),
-                            bullets=section.get('bullets')
-                        )
+                        title = section.get('title', 'Section')
+                        
+                        # Add section content if present
+                        if section.get('content'):
+                            step_obj.add_section(title, section.get('content'))
+                        
+                        # Add bullets if present
+                        if section.get('bullets') and len(section.get('bullets', [])) > 0:
+                            step_obj.add_bullets(title, section.get('bullets'))
                     
                     # Set step criteria
                     if criteria := step.get('step_criteria'):

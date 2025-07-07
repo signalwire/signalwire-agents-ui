@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { HelpTooltip } from '@/components/ui/help-tooltip'
 import { helpContent } from '@/lib/helpContent'
+import { ConfirmationDialog } from '@/components/ui/confirmation-dialog'
 
 export interface ContextSection {
   title: string
@@ -63,6 +64,11 @@ export function ContextsStepsConfig({
   const [activeContext, setActiveContext] = useState<string>(localConfig.contexts[0]?.id || '')
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set())
   const [showHelp, setShowHelp] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; contextId: string; contextName: string }>({
+    show: false,
+    contextId: '',
+    contextName: ''
+  })
 
   useEffect(() => {
     setLocalConfig(config)
@@ -85,7 +91,16 @@ export function ContextsStepsConfig({
       name: localConfig.contexts.length === 0 ? 'default' : `context_${localConfig.contexts.length + 1}`,
       isolated: true,
       sections: [],
-      steps: []
+      steps: [{
+        id: `step_${Date.now()}_1`,
+        name: 'step_1',
+        sections: [{
+          title: 'Task',
+          content: 'Describe the task for this step...'
+        }],
+        valid_steps: [],
+        valid_contexts: []
+      }]
     }
     setLocalConfig({
       ...localConfig,
@@ -121,7 +136,10 @@ export function ContextsStepsConfig({
     const newStep: Step = {
       id: `step_${Date.now()}`,
       name: `step_${context.steps.length + 1}`,
-      sections: [],
+      sections: [{
+        title: 'Task',
+        content: 'Describe the task for this step...'
+      }],
       valid_steps: [],
       valid_contexts: []
     }
@@ -249,7 +267,7 @@ export function ContextsStepsConfig({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -301,9 +319,9 @@ export function ContextsStepsConfig({
               </div>
             </div>
           ) : (
-            <div className="flex gap-4 h-full">
+            <div className="flex flex-col lg:flex-row gap-4 h-full">
               {/* Context List Sidebar */}
-              <div className="w-64 border-r pr-4 overflow-y-auto">
+              <div className="lg:w-64 border-b lg:border-b-0 lg:border-r pb-4 lg:pb-0 lg:pr-4 overflow-y-auto">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between mb-2">
                     <Label className="text-base">Contexts</Label>
@@ -325,17 +343,34 @@ export function ContextsStepsConfig({
                     >
                       <CardHeader className="p-3">
                         <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <h4 className="font-medium">{context.name}</h4>
+                          <div className="flex-1 min-w-0" onClick={() => setActiveContext(context.id)}>
+                            <h4 className="font-medium truncate">{context.name}</h4>
                             <p className="text-xs text-muted-foreground">
                               {context.steps.length} steps
                             </p>
                           </div>
-                          {context.isolated && (
-                            <Badge variant="secondary" className="text-xs">
-                              Isolated
-                            </Badge>
-                          )}
+                          <div className="flex items-center gap-1">
+                            {context.isolated && (
+                              <Badge variant="secondary" className="text-xs">
+                                Isolated
+                              </Badge>
+                            )}
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setDeleteConfirm({
+                                  show: true,
+                                  contextId: context.id,
+                                  contextName: context.name
+                                })
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                       </CardHeader>
                     </Card>
@@ -482,18 +517,24 @@ export function ContextsStepsConfig({
                         </CardContent>
                       </Card>
 
-                      {/* Delete Context */}
-                      {localConfig.contexts.length > 1 && (
-                        <div className="pt-4 border-t">
-                          <Button
-                            variant="destructive"
-                            onClick={() => deleteContext(currentContext.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete Context
-                          </Button>
-                        </div>
-                      )}
+                      {/* Delete Context Button - Mobile Friendly */}
+                      <div className="pt-4 border-t">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            setDeleteConfirm({
+                              show: true,
+                              contextId: currentContext.id,
+                              contextName: currentContext.name
+                            })
+                          }}
+                          className="w-full sm:w-auto"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete Context
+                        </Button>
+                      </div>
                     </TabsContent>
 
                     <TabsContent value="steps" className="space-y-4">
@@ -521,12 +562,13 @@ export function ContextsStepsConfig({
                         <div className="space-y-4">
                           {currentContext.steps.map((step, stepIdx) => (
                             <Card key={step.id}>
-                              <CardHeader>
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2 flex-1">
+                              <CardHeader className="px-3 py-2">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                                  <div className="flex items-center gap-2 flex-1 w-full">
                                     <Button
                                       variant="ghost"
                                       size="icon"
+                                      className="h-8 w-8"
                                       onClick={() => toggleStepExpansion(step.id)}
                                     >
                                       {expandedSteps.has(step.id) ? (
@@ -535,28 +577,30 @@ export function ContextsStepsConfig({
                                         <ChevronDown className="h-4 w-4" />
                                       )}
                                     </Button>
-                                    <Badge variant="outline">Step {stepIdx + 1}</Badge>
+                                    <Badge variant="outline" className="text-xs">Step {stepIdx + 1}</Badge>
                                     <Input
                                       value={step.name}
                                       onChange={(e) => updateStep(currentContext.id, step.id, { name: e.target.value })}
                                       placeholder="Step name..."
-                                      className="max-w-xs"
+                                      className="flex-1"
                                     />
                                   </div>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-1 ml-10 sm:ml-0">
                                     <Button
                                       size="icon"
                                       variant="ghost"
+                                      className="h-8 w-8"
                                       onClick={() => duplicateStep(currentContext.id, step.id)}
                                     >
-                                      <Copy className="h-4 w-4" />
+                                      <Copy className="h-3 w-3" />
                                     </Button>
                                     <Button
                                       size="icon"
                                       variant="ghost"
+                                      className="h-8 w-8"
                                       onClick={() => deleteStep(currentContext.id, step.id)}
                                     >
-                                      <Trash2 className="h-4 w-4" />
+                                      <Trash2 className="h-3 w-3" />
                                     </Button>
                                   </div>
                                 </div>
@@ -625,7 +669,7 @@ export function ContextsStepsConfig({
                                     </div>
 
                                     {/* Navigation Rules */}
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                       <div className="space-y-2">
                                         <div className="flex items-center gap-2">
                                           <Label>Valid Next Steps</Label>
@@ -880,6 +924,19 @@ export function ContextsStepsConfig({
           </Button>
         </div>
       </DialogContent>
+      
+      <ConfirmationDialog
+        open={deleteConfirm.show}
+        onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, show: open })}
+        title="Delete Context"
+        description={`Are you sure you want to delete the context "${deleteConfirm.contextName}"? This action cannot be undone.`}
+        onConfirm={() => {
+          deleteContext(deleteConfirm.contextId)
+          setDeleteConfirm({ show: false, contextId: '', contextName: '' })
+        }}
+        actionLabel="Delete"
+        variant="destructive"
+      />
     </Dialog>
   )
 }
