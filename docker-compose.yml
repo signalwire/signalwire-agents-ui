@@ -1,5 +1,8 @@
 version: '3.8'
 
+# Environment variables are loaded from .env file
+# Copy .env.example to .env and configure your settings
+
 services:
   db:
     image: pgvector/pgvector:pg16
@@ -27,15 +30,16 @@ services:
     environment:
       DATABASE_URL: postgresql://agent_builder:${DB_PASSWORD:-changeme}@db:5432/agent_builder
       JWT_SECRET: ${JWT_SECRET:-change-this-secret-key}
-      HOSTNAME: tatooine.cantina.cloud
-      PORT: 8430
-      API_PORT: 8000
+      HOSTNAME: ${HOSTNAME:-localhost}
+      PORT: ${PORT:-8430}
+      API_PORT: ${API_PORT:-8000}
       RATE_LIMIT_API: ${RATE_LIMIT_API:-100}
       RATE_LIMIT_SWML: ${RATE_LIMIT_SWML:-1000}
       SIGNALWIRE_JWT_SECRET: ${SIGNALWIRE_JWT_SECRET:-change-this-for-production}
     volumes:
       - app_logs:/app/logs
       - kb_storage:/app/data/knowledge_base
+      - media_storage:/app/data/media
     depends_on:
       db:
         condition: service_healthy
@@ -44,3 +48,4 @@ volumes:
   postgres_data:
   app_logs:
   kb_storage:
+  media_storage:

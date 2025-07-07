@@ -9,7 +9,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from .core.config import settings
-from .api import auth, agents, swml, admin, swaig, skills, native_functions, skills_marketplace, skills_unified, skills_test, post_prompt, changes, call_summaries, env_vars, knowledge_bases, agent_knowledge_bases, knowledge_base_documents
+from .api import auth, agents, swml, admin, swaig, skills, native_functions, skills_marketplace, skills_unified, skills_test, post_prompt, changes, call_summaries, env_vars, knowledge_bases, agent_knowledge_bases, knowledge_base_documents, media
 
 # Configure logging
 logging.basicConfig(
@@ -89,6 +89,7 @@ app.include_router(env_vars.router)  # Environment variables endpoints
 app.include_router(knowledge_bases.router, prefix="/api")  # Standalone knowledge bases
 app.include_router(agent_knowledge_bases.router, prefix="/api")  # Agent-KB associations
 app.include_router(knowledge_base_documents.router, prefix="/api")  # KB document management
+app.include_router(media.router, prefix="/api")  # Media library endpoints
 
 # Health check endpoint
 @app.get("/api/health")

@@ -229,3 +229,47 @@ class KBChunk(Base):
     
     # Relationships
     document = relationship("KBDocument", back_populates="chunks")
+
+
+class MediaFile(Base):
+    """Uploaded media file (audio/video) for agent configurations."""
+    
+    __tablename__ = "media_files"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    filename = Column(String(255), unique=True, nullable=False)
+    original_filename = Column(String(255), nullable=False)
+    file_type = Column(String(20), nullable=False)  # 'audio', 'video', 'image'
+    mime_type = Column(String(100), nullable=False)
+    category = Column(String(50))
+    file_size = Column(BigInteger, nullable=False)
+    duration_seconds = Column(Float)  # Duration in seconds for audio/video
+    file_path = Column(String(500), nullable=False)
+    file_metadata = Column("metadata", JSON, default={})
+    description = Column(Text)
+    tags = Column(ARRAY(String), default=[])
+    uploaded_by = Column(String)
+    source_type = Column(String(20), default='uploaded')
+    external_url = Column(Text)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now())
+    last_accessed_at = Column(DateTime(timezone=True))
+    file_hash = Column(String(64))
+    
+    # Relationships
+    usages = relationship("MediaUsage", back_populates="media_file", cascade="all, delete-orphan")
+
+
+class MediaUsage(Base):
+    """Track which agents use which media files."""
+    
+    __tablename__ = "media_usage"
+    
+    media_file_id = Column(UUID(as_uuid=True), ForeignKey("media_files.id", ondelete="CASCADE"), primary_key=True)
+    agent_id = Column(UUID(as_uuid=True), ForeignKey("agents.id", ondelete="CASCADE"), primary_key=True)
+    parameter_name = Column(String(50), primary_key=True)  # e.g., 'background_file', 'hold_music'
+    attached_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    media_file = relationship("MediaFile", back_populates="usages")
+    agent = relationship("Agent")

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, Info } from 'lucide-react'
+import { Plus, Trash2, Info, Upload, X, Music, Video } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { MediaPicker } from '@/components/media/MediaPicker'
 
 interface ParamsEditorProps {
   open: boolean
@@ -329,6 +330,11 @@ export function ParamsEditor({ open, onClose, params, onChange }: ParamsEditorPr
   const [localParams, setLocalParams] = useState<Record<string, any>>(params)
   const [customKey, setCustomKey] = useState('')
   const [customValue, setCustomValue] = useState('')
+  const [showMediaPicker, setShowMediaPicker] = useState(false)
+  const [mediaPickerConfig, setMediaPickerConfig] = useState<{
+    paramKey: string
+    mediaType: 'audio' | 'video' | 'any'
+  } | null>(null)
 
   // Sync local state with props when dialog opens
   useEffect(() => {
@@ -422,9 +428,46 @@ export function ParamsEditor({ open, onClose, params, onChange }: ParamsEditorPr
     return acc
   }, {} as Record<string, ParamConfig[]>)
 
+  // Check if a parameter is a media URL parameter
+  const isMediaUrlParam = (key: string): boolean => {
+    const mediaParams = [
+      'background_file', 'hold_music', 
+      'video_talking_file', 'video_idle_file', 'video_listening_file'
+    ]
+    return mediaParams.includes(key)
+  }
+
+  // Get media type for a parameter
+  const getMediaType = (key: string): 'audio' | 'video' | 'any' => {
+    if (key.startsWith('video_')) return 'video'
+    if (['background_file', 'hold_music'].includes(key)) return 'audio'
+    return 'any'
+  }
+
+  // Get filename from URL
+  const getFilenameFromUrl = (url: string): string => {
+    try {
+      const urlObj = new URL(url)
+      const pathname = urlObj.pathname
+      return pathname.split('/').pop() || url
+    } catch {
+      return url
+    }
+  }
+
+  // Open media picker for a parameter
+  const openMediaPicker = (paramKey: string) => {
+    setMediaPickerConfig({
+      paramKey,
+      mediaType: getMediaType(paramKey)
+    })
+    setShowMediaPicker(true)
+  }
+
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <>
+      <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>AI Parameters</DialogTitle>
@@ -493,6 +536,42 @@ export function ParamsEditor({ open, onClose, params, onChange }: ParamsEditorPr
                                 ))}
                               </SelectContent>
                             </Select>
+                          ) : isMediaUrlParam(param.key) ? (
+                            // Media URL selector
+                            <div className="flex gap-2 flex-1">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="flex-1 justify-start"
+                                onClick={() => openMediaPicker(param.key)}
+                              >
+                                {value ? (
+                                  <>
+                                    {param.key.startsWith('video_') ? (
+                                      <Video className="h-4 w-4 mr-2" />
+                                    ) : (
+                                      <Music className="h-4 w-4 mr-2" />
+                                    )}
+                                    <span className="truncate">{getFilenameFromUrl(value)}</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Upload className="h-4 w-4 mr-2" />
+                                    Select Media
+                                  </>
+                                )}
+                              </Button>
+                              {value && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => updateParam(param.key, '', param)}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
                           ) : (
                             <Input
                               type={param.type}
@@ -584,6 +663,26 @@ export function ParamsEditor({ open, onClose, params, onChange }: ParamsEditorPr
           </Button>
         </div>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+
+      {/* Media Picker Dialog */}
+      {showMediaPicker && mediaPickerConfig && (
+        <MediaPicker
+          open={showMediaPicker}
+          onClose={() => {
+            setShowMediaPicker(false)
+            setMediaPickerConfig(null)
+          }}
+          value={localParams[mediaPickerConfig.paramKey] || ''}
+          onChange={(url) => {
+            updateParam(mediaPickerConfig.paramKey, url)
+            setShowMediaPicker(false)
+            setMediaPickerConfig(null)
+          }}
+          mediaType={mediaPickerConfig.mediaType}
+          allowExternal={true}
+        />
+      )}
+    </>
   )
 }

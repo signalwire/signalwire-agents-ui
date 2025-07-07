@@ -12,6 +12,7 @@ MIGRATIONS = [
     "add-post-prompt-columns.sql",
     "add-env-vars-table.sql",
     "add-pgvector-knowledge-base.sql",
+    "add-media-library.sql",
     # Add new migrations here
 ]
 

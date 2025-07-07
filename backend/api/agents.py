@@ -14,6 +14,7 @@ from ..core.security import verify_jwt_token
 from ..core.audit import create_audit_log, get_request_metadata
 from ..core.config import get_swml_url
 from ..core.swml_generator import generate_swml
+from ..services.media_tracker import update_media_usage, clear_media_usage
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -181,6 +182,9 @@ async def create_agent(
     await db.commit()
     await db.refresh(agent)
     
+    # Update media usage tracking
+    await update_media_usage(db, agent.id, agent.config)
+    
     return AgentResponse(
         id=agent.id,
         name=agent.name,
@@ -304,6 +308,10 @@ async def update_agent(
     await db.commit()
     await db.refresh(agent)
     
+    # Update media usage tracking if config changed
+    if agent_data.config is not None:
+        await update_media_usage(db, agent.id, agent.config)
+    
     return AgentResponse(
         id=agent.id,
         name=agent.name,
@@ -405,6 +413,9 @@ async def delete_agent(
             "config": agent.config
         }
     )
+    
+    # Clear media usage before deleting agent
+    await clear_media_usage(db, agent_id)
     
     # Delete agent
     await db.execute(delete(Agent).where(Agent.id == agent_id))

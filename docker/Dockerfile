@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     nginx \
     supervisor \
+    libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js from NodeSource
@@ -71,7 +72,7 @@ COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY certs/ /certs/
 
 # Create necessary directories
-RUN mkdir -p /var/log/supervisor /var/log/nginx /app/logs /app/data/knowledge_base
+RUN mkdir -p /var/log/supervisor /var/log/nginx /app/logs /app/data/knowledge_base /app/data/media/audio /app/data/media/video
 
 # Set Python path
 ENV PYTHONPATH=/app

@@ -10,6 +10,7 @@ import { CallSummariesPage } from '@/pages/CallSummaries'
 import { AllCallSummariesPage } from '@/pages/AllCallSummaries'
 import { KnowledgeBasesPage } from '@/pages/KnowledgeBases'
 import { KnowledgeBaseDetailPage } from '@/pages/KnowledgeBaseDetail'
+import { MediaLibraryPage } from '@/pages/MediaLibrary'
 import { Toaster } from '@/components/ui/toaster'
 import { ThemeProvider } from '@/components/theme-provider'
 
@@ -115,6 +116,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <KnowledgeBaseDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/media"
+            element={
+              <ProtectedRoute>
+                <MediaLibraryPage />
               </ProtectedRoute>
             }
           />
