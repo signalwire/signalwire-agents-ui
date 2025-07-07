@@ -5,6 +5,15 @@ export interface AgentConfig {
   language: string
   engine?: string
   model?: string
+  // New multi-language support
+  languages?: Array<{
+    id?: string
+    name: string
+    code: string
+    voice: string
+    engine: string
+    model?: string
+  }>
   prompt_sections: Array<{
     title: string
     body?: string

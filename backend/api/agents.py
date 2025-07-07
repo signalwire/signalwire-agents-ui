@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 from uuid import UUID
 from datetime import datetime
+import logging
 
 from ..core.database import get_db
 from ..models import Agent, Token
@@ -18,6 +19,7 @@ from slowapi.util import get_remote_address
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 limiter = Limiter(key_func=get_remote_address)
+logger = logging.getLogger(__name__)
 
 
 class AgentConfig(BaseModel):
@@ -26,6 +28,7 @@ class AgentConfig(BaseModel):
     engine: str = Field(default="elevenlabs", description="TTS engine")
     language: str = Field(default="en-US", description="Language code")
     model: Optional[str] = Field(None, description="Model for certain engines")
+    languages: Optional[List[Dict[str, Any]]] = Field(None, description="Multi-language configuration")
     prompt_sections: List[Dict[str, Any]] = Field(default_factory=list)
     skills: List[Dict[str, Any]] = Field(default_factory=list)
     params: Dict[str, Any] = Field(default_factory=dict)
@@ -246,6 +249,13 @@ async def update_agent(
     auth_data: Dict[str, Any] = Depends(verify_jwt_token)
 ) -> AgentResponse:
     """Update an agent."""
+    # Log the incoming data
+    logger.info(f"Updating agent {agent_id}")
+    if agent_data.config:
+        logger.info(f"Config has languages field: {'languages' in agent_data.config.model_dump()}")
+        if 'languages' in agent_data.config.model_dump():
+            logger.info(f"Languages data: {agent_data.config.languages}")
+    
     # Get existing agent
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
@@ -268,6 +278,9 @@ async def update_agent(
     if agent_data.config is not None:
         changes["config"] = {"old": agent.config, "new": agent_data.config.model_dump()}
         agent.config = agent_data.config.model_dump()
+        logger.info(f"Saved config with languages: {'languages' in agent.config}")
+        if 'languages' in agent.config:
+            logger.info(f"Saved languages: {agent.config['languages']}")
     
     # Update metadata
     agent.updated_by = str(auth_data["token"].id)

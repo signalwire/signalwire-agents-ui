@@ -39,29 +39,43 @@ async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=
     # Debug logging to verify recording settings
     logger.info(f"Agent created with record_call={record_call}, format={record_format}, stereo={record_stereo}")
     
-    # Configure voice and language
-    voice = agent_config.get('voice', 'nova')
-    engine = agent_config.get('engine', 'elevenlabs')
-    language = agent_config.get('language', 'en-US')
-    model = agent_config.get('model')
+    # Configure languages
+    languages = agent_config.get('languages', [])
     
-    # Don't modify the voice - engine is already stored separately
-    
-    # Determine proper language name
-    lang_names = {
-        'en': 'English', 'es': 'Spanish', 'fr': 'French', 'de': 'German',
-        'pt': 'Portuguese', 'it': 'Italian', 'ja': 'Japanese', 'ko': 'Korean',
-        'zh': 'Chinese', 'ru': 'Russian', 'hi': 'Hindi', 'nl': 'Dutch'
-    }
-    base_lang = language.split('-')[0] if language != 'multi' else 'multi'
-    proper_name = lang_names.get(base_lang, 'English')
-    
-    # Add language configuration
-    # The SDK expects individual parameters, not a dict
-    if engine == 'rime' and model:
-        agent.add_language(proper_name, language, voice, engine=engine, model=model)
+    if languages:
+        # New multi-language configuration
+        for lang in languages:
+            name = lang.get('name', 'English')
+            code = lang.get('code', 'en-US')
+            voice = lang.get('voice', 'nova')
+            engine = lang.get('engine', 'elevenlabs')
+            model = lang.get('model')
+            
+            if engine == 'rime' and model:
+                agent.add_language(name, code, voice, engine=engine, model=model)
+            else:
+                agent.add_language(name, code, voice, engine=engine)
     else:
-        agent.add_language(proper_name, language, voice, engine=engine)
+        # Legacy single language configuration
+        voice = agent_config.get('voice', 'nova')
+        engine = agent_config.get('engine', 'elevenlabs')
+        language = agent_config.get('language', 'en-US')
+        model = agent_config.get('model')
+        
+        # Determine proper language name
+        lang_names = {
+            'en': 'English', 'es': 'Spanish', 'fr': 'French', 'de': 'German',
+            'pt': 'Portuguese', 'it': 'Italian', 'ja': 'Japanese', 'ko': 'Korean',
+            'zh': 'Chinese', 'ru': 'Russian', 'hi': 'Hindi', 'nl': 'Dutch'
+        }
+        base_lang = language.split('-')[0] if language != 'multi' else 'multi'
+        proper_name = lang_names.get(base_lang, 'English')
+        
+        # Add language configuration
+        if engine == 'rime' and model:
+            agent.add_language(proper_name, language, voice, engine=engine, model=model)
+        else:
+            agent.add_language(proper_name, language, voice, engine=engine)
     
     # Set parameters
     default_params = {
@@ -625,13 +639,7 @@ def generate_swml_manual(agent_config: Dict[str, Any], agent_id: str) -> Dict[st
         prompt_content.append(section_obj)
     
     # Build AI configuration
-    voice = agent_config.get('voice', 'nova')
-    engine = agent_config.get('engine', 'elevenlabs')
-    
-    # Don't modify the voice - engine is already stored separately
-    
     ai_config = {
-        "voice": voice,
         "prompt": {
             "temperature": 0.7,
             "top_p": 0.9,
@@ -640,26 +648,54 @@ def generate_swml_manual(agent_config: Dict[str, Any], agent_id: str) -> Dict[st
     }
     
     # Add language configuration
-    language = agent_config.get('language', 'en-US')
-    lang_names = {
-        'en': 'English', 'es': 'Spanish', 'fr': 'French', 'de': 'German',
-        'pt': 'Portuguese', 'it': 'Italian', 'ja': 'Japanese', 'ko': 'Korean',
-        'zh': 'Chinese', 'ru': 'Russian', 'hi': 'Hindi', 'nl': 'Dutch'
-    }
-    base_lang = language.split('-')[0] if language != 'multi' else 'multi'
-    proper_name = lang_names.get(base_lang, 'English')
+    languages = agent_config.get('languages', [])
     
-    language_config = {
-        "name": proper_name,
-        "code": language,
-        "engine": engine,
-        "voice": voice
-    }
-    
-    if engine == 'rime' and (model := agent_config.get('model')):
-        language_config["model"] = model
-    
-    ai_config["languages"] = [language_config]
+    if languages:
+        # New multi-language configuration
+        ai_config["languages"] = [
+            {
+                "name": lang.get('name', 'English'),
+                "code": lang.get('code', 'en-US'),
+                "engine": lang.get('engine', 'elevenlabs'),
+                "voice": lang.get('voice', 'nova'),
+                **({
+                    "model": lang.get('model')
+                } if lang.get('engine') == 'rime' and lang.get('model') else {})
+            }
+            for lang in languages
+        ]
+        # For compatibility, set the voice from the first language
+        if languages:
+            ai_config["voice"] = languages[0].get('voice', 'nova')
+    else:
+        # Legacy single language configuration
+        voice = agent_config.get('voice', 'nova')
+        engine = agent_config.get('engine', 'elevenlabs')
+        language = agent_config.get('language', 'en-US')
+        model = agent_config.get('model')
+        
+        # Don't modify the voice - engine is already stored separately
+        ai_config["voice"] = voice
+        
+        lang_names = {
+            'en': 'English', 'es': 'Spanish', 'fr': 'French', 'de': 'German',
+            'pt': 'Portuguese', 'it': 'Italian', 'ja': 'Japanese', 'ko': 'Korean',
+            'zh': 'Chinese', 'ru': 'Russian', 'hi': 'Hindi', 'nl': 'Dutch'
+        }
+        base_lang = language.split('-')[0] if language != 'multi' else 'multi'
+        proper_name = lang_names.get(base_lang, 'English')
+        
+        language_config = {
+            "name": proper_name,
+            "code": language,
+            "engine": engine,
+            "voice": voice
+        }
+        
+        if engine == 'rime' and model:
+            language_config["model"] = model
+        
+        ai_config["languages"] = [language_config]
     
     # Add hints
     if hints := agent_config.get('hints'):
