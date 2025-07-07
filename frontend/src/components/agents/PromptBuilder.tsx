@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Trash2, GripVertical } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -22,6 +22,13 @@ interface PromptBuilderProps {
 
 export function PromptBuilder({ open, onClose, sections, onChange }: PromptBuilderProps) {
   const [localSections, setLocalSections] = useState<PromptSection[]>(sections)
+
+  // Sync local state with prop when dialog opens
+  useEffect(() => {
+    if (open) {
+      setLocalSections(sections)
+    }
+  }, [open, sections])
 
   const commonSectionTemplates = [
     { title: 'Role', body: 'You are a helpful assistant...' },

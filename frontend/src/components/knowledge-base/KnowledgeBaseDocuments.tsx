@@ -1,10 +1,16 @@
 import { useState, useEffect } from 'react'
-import { FileText, Upload, Download, Trash2, RefreshCw, Search, CheckCircle, Clock, XCircle } from 'lucide-react'
+import { FileText, Upload, Download, Trash2, RefreshCw, Search, CheckCircle, Clock, XCircle, MoreVertical } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { 
   Table, 
   TableBody, 
@@ -260,14 +266,15 @@ export function KnowledgeBaseDocuments({ knowledgeBaseId }: KnowledgeBaseDocumen
         </CardContent>
       </Card>
 
-      {/* Documents Table */}
+      {/* Documents Table/Cards */}
       {documents.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Documents</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -354,6 +361,86 @@ export function KnowledgeBaseDocuments({ knowledgeBaseId }: KnowledgeBaseDocumen
                   ))}
                 </TableBody>
               </Table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-3">
+              {documents.map((doc) => (
+                <div key={doc.id} className="border rounded-lg p-4 space-y-3">
+                  {/* Header with filename and actions */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2 min-w-0">
+                      <FileText className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm break-words">{doc.filename}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {doc.file_type || 'Document'} • {formatBytes(doc.file_size)}
+                        </p>
+                      </div>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleDownload(doc.id, doc.filename)}>
+                          <Download className="h-4 w-4 mr-2" />
+                          Download
+                        </DropdownMenuItem>
+                        {doc.status === 'failed' && (
+                          <DropdownMenuItem onClick={() => handleRetry(doc.id)}>
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Retry
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem
+                          onClick={() => handleDelete(doc.id)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  {/* Status and progress */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Badge variant={getStatusColor(doc.status) as any} className="gap-1">
+                        {getStatusIcon(doc.status)}
+                        {doc.status}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {formatRelativeTime(doc.uploaded_at)}
+                      </span>
+                    </div>
+                    
+                    {doc.status === 'processing' && (
+                      <div className="space-y-1">
+                        <Progress value={doc.progress_percentage} className="h-2" />
+                        <p className="text-xs text-muted-foreground">
+                          {doc.chunks_processed}/{doc.chunk_count} chunks processed
+                        </p>
+                      </div>
+                    )}
+                    
+                    {doc.status === 'completed' && (
+                      <p className="text-xs text-muted-foreground">
+                        {doc.chunk_count} chunks indexed
+                      </p>
+                    )}
+                    
+                    {doc.status === 'failed' && doc.error_message && (
+                      <p className="text-xs text-destructive">
+                        {doc.error_message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>

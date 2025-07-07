@@ -22,9 +22,10 @@ export function HelpModal({ open, onClose }: HelpModalProps) {
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="h-8 w-8"
+              className="h-10 w-10 sm:h-8 sm:w-8 rounded-full -mr-2 sm:mr-0"
             >
-              <X className="h-4 w-4" />
+              <X className="h-5 w-5 sm:h-4 sm:w-4" />
+              <span className="sr-only">Close</span>
             </Button>
           </div>
         </DialogHeader>

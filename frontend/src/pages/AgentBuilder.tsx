@@ -1196,19 +1196,21 @@ export function AgentBuilderPage() {
           open={showLLMParams}
           onOpenChange={setShowLLMParams}
         >
-          <DialogContent className="max-w-3xl">
+          <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
             <DialogHeader>
               <DialogTitle>LLM Parameters</DialogTitle>
               <DialogDescription>
                 Fine-tune language model behavior for prompts and post-prompts
               </DialogDescription>
             </DialogHeader>
-            <LLMParamsCard
-              promptParams={promptLLMParams}
-              postPromptParams={postPromptLLMParams}
-              onPromptParamsChange={setPromptLLMParamsWithTracking}
-              onPostPromptParamsChange={setPostPromptLLMParamsWithTracking}
-            />
+            <div className="flex-1 overflow-y-auto">
+              <LLMParamsCard
+                promptParams={promptLLMParams}
+                postPromptParams={postPromptLLMParams}
+                onPromptParamsChange={setPromptLLMParamsWithTracking}
+                onPostPromptParamsChange={setPostPromptLLMParamsWithTracking}
+              />
+            </div>
           </DialogContent>
         </Dialog>
 
