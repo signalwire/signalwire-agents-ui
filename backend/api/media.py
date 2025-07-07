@@ -524,7 +524,7 @@ async def delete_media(
     
     # Delete from database
     await db.execute(
-        delete(text("media_files")).where(text("id = :id")),
+        text("DELETE FROM media_files WHERE id = :id"),
         {"id": media_id}
     )
     await db.commit()

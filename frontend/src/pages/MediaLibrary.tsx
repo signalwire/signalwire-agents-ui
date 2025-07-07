@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Upload, Music, Video, Search, Trash2, Download, MoreVertical, Link, Play, Pause } from 'lucide-react'
 import { MainLayout } from '@/components/layout/MainLayout'
@@ -44,8 +44,19 @@ export function MediaLibraryPage() {
   const [description, setDescription] = useState('')
   const [uploading, setUploading] = useState(false)
   const [playingMedia, setPlayingMedia] = useState<string | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
   const { toast } = useToast()
   const queryClient = useQueryClient()
+
+  // Detect mobile view
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768) // md breakpoint
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   // Fetch media files
   const { data, isLoading } = useQuery({
@@ -365,7 +376,7 @@ export function MediaLibraryPage() {
                       )}
                       
                       {/* Media player */}
-                      {playingMedia === file.id && (
+                      {playingMedia === file.id && !isMobile && (
                         <div className="mt-3 pt-3 border-t">
                           {file.file_type === 'audio' ? (
                             <audio
@@ -458,7 +469,7 @@ export function MediaLibraryPage() {
                       </div>
                       
                       {/* Media player for mobile */}
-                      {playingMedia === file.id && (
+                      {playingMedia === file.id && isMobile && (
                         <div className="mt-3 pt-3 border-t">
                           {file.file_type === 'audio' ? (
                             <audio

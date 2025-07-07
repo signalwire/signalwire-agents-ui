@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { agentsApi } from '@/api/agents'
 import { format } from 'date-fns'
-import { Phone, Clock, User, Bot, Loader2, Mic, Cpu, AudioLines, Timer, Copy, CheckCircle, X } from 'lucide-react'
+import { Phone, Clock, User, Bot, Loader2, Mic, Cpu, AudioLines, Timer, Copy, CheckCircle, X, Save } from 'lucide-react'
 import { useState, useRef } from 'react'
 import { useToast } from '@/components/ui/use-toast'
+import { apiClient } from '@/api/client'
 
 interface CallSummaryDetailProps {
   agentId: string
@@ -36,6 +37,7 @@ export function CallSummaryDetail({ agentId, summaryId, onClose }: CallSummaryDe
   })
   
   const [copied, setCopied] = useState(false)
+  const [saving, setSaving] = useState(false)
   const { toast } = useToast()
   const audioRef = useRef<HTMLAudioElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -85,6 +87,51 @@ export function CallSummaryDetail({ agentId, summaryId, onClose }: CallSummaryDe
         description: "Failed to copy to clipboard",
         variant: "destructive",
       })
+    }
+  }
+
+  const saveToMediaLibrary = async () => {
+    const recordingUrl = summary?.raw_data?.SWMLVars?.record_call_url
+    if (!recordingUrl) return
+
+    setSaving(true)
+    try {
+      // Create a description with call details
+      const callDate = summary?.created_at ? format(new Date(summary.created_at), 'MMM d, yyyy h:mm a') : 'Unknown date'
+      const callerInfo = `${summary?.caller_id_name || 'Unknown'} (${summary?.caller_id_number || 'N/A'})`
+      const description = `Call recording from ${callDate} - ${callerInfo} - Duration: ${formatDuration(summary?.total_minutes)}`
+
+      await apiClient.post('/media/import', {
+        url: recordingUrl,
+        description: description,
+        category: 'call-recordings'
+      })
+
+      toast({
+        title: "Recording saved",
+        description: "The call recording has been saved to your media library",
+      })
+    } catch (error: any) {
+      let errorMessage = 'Failed to save recording'
+      
+      if (error.response?.data?.detail) {
+        const detail = error.response.data.detail
+        if (typeof detail === 'string') {
+          errorMessage = detail
+        } else if (Array.isArray(detail)) {
+          errorMessage = detail.map((err: any) => err.msg || err.message || 'Validation error').join(', ')
+        } else if (typeof detail === 'object' && detail.msg) {
+          errorMessage = detail.msg
+        }
+      }
+      
+      toast({
+        title: "Save failed",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -163,37 +210,42 @@ export function CallSummaryDetail({ agentId, summaryId, onClose }: CallSummaryDe
                 {/* Recording Player */}
                 {recordingUrl && (
                   <CardContent className="pt-0">
-                    <div className="flex items-center gap-2 text-sm mb-2">
-                      <AudioLines className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Recording:</span>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2 text-sm">
+                        <AudioLines className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">Recording:</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={saveToMediaLibrary}
+                        disabled={saving}
+                        className="h-8 px-2"
+                      >
+                        {saving ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4 mr-1" />
+                            <span className="hidden sm:inline">Save to Media Library</span>
+                            <span className="sm:hidden">Save</span>
+                          </>
+                        )}
+                      </Button>
                     </div>
                     {recordingType === 'video' ? (
-                      <div className="relative bg-black rounded-lg overflow-hidden" style={{ height: '300px' }}>
-                        <video
-                          ref={videoRef}
-                          controls
-                          controlsList="nodownload"
-                          className="absolute inset-0 w-full h-full object-contain"
-                          preload="metadata"
-                          onClick={(e) => {
-                            // Only fullscreen when clicking the video itself, not controls
-                            const rect = e.currentTarget.getBoundingClientRect()
-                            const clickY = e.clientY - rect.top
-                            const videoHeight = rect.height
-                            // If click is in the bottom 50px (where controls are), don't fullscreen
-                            if (clickY < videoHeight - 50 && videoRef.current) {
-                              if (document.fullscreenElement) {
-                                document.exitFullscreen()
-                              } else {
-                                videoRef.current.requestFullscreen()
-                              }
-                            }
-                          }}
-                        >
-                          <source src={recordingUrl} type="video/mp4" />
-                          Your browser does not support the video tag.
-                        </video>
-                      </div>
+                      <video
+                        ref={videoRef}
+                        controls
+                        className="w-full rounded"
+                        preload="metadata"
+                      >
+                        <source src={recordingUrl} type="video/mp4" />
+                        Your browser does not support the video tag.
+                      </video>
                     ) : recordingType === 'audio' ? (
                       <audio
                         ref={audioRef}
