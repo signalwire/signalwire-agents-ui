@@ -13,12 +13,16 @@ import { KnowledgeBaseDetailPage } from '@/pages/KnowledgeBaseDetail'
 import { MediaLibraryPage } from '@/pages/MediaLibrary'
 import { Toaster } from '@/components/ui/toaster'
 import { ThemeProvider } from '@/components/theme-provider'
+import { BackendProvider, useBackend } from '@/contexts/BackendContext'
+import { BackendStatus } from '@/components/layout/BackendStatus'
 
-function App() {
+function AppContent() {
+  const { isConnected, isReady } = useBackend();
+  
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="signalwire-theme">
-      <AuthProvider>
-        <Routes>
+    <>
+      <BackendStatus isConnected={isConnected} isReady={isReady} />
+      <Routes>
           <Route path="/login" element={<LoginPage />} />
           
           <Route
@@ -130,6 +134,17 @@ function App() {
           />
         </Routes>
         <Toaster />
+    </>
+  )
+}
+
+function App() {
+  return (
+    <ThemeProvider defaultTheme="dark" storageKey="signalwire-theme">
+      <AuthProvider>
+        <BackendProvider>
+          <AppContent />
+        </BackendProvider>
       </AuthProvider>
     </ThemeProvider>
   )

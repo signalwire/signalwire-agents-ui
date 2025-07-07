@@ -137,49 +137,83 @@ Building a mobile-first, web-based interface for creating and managing SignalWir
   - SSL certificate info
   - Database connection status
 
+### Milestone 6: Enhanced Features ✅
+**Status**: COMPLETE
+
+- Knowledge Base Integration:
+  - Upload documents (PDF, TXT, MD, DOCX)
+  - Vector search with pgvector
+  - Multiple knowledge bases per agent
+  - Search configuration options
+- Media Library:
+  - Upload/import audio and video files
+  - Persistent storage with Docker volumes
+  - Usage tracking across agents
+  - Admin settings for quotas and limits
+- Call Summaries:
+  - Detailed call logs and transcripts
+  - AI summaries and metrics
+  - Recording playback
+  - Save recordings to media library
+- Advanced Configuration:
+  - LLM parameters with special UI
+  - Custom pronunciations
+  - Global data configuration
+  - Native functions toggle
+  - Contexts and steps
+  - Recording configuration
+
+### Milestone 7: Testing & API Tools ✅
+**Status**: COMPLETE
+
+- API test script (test-api.sh)
+- Rebuild script for Docker containers
+- Environment variable management
+- Admin panel enhancements:
+  - Environment variables viewer
+  - Media library settings
+  - System information display
+
 ## Remaining Milestones 📋
 
-### Milestone 6: Testing & Polish 🚧
-**Status**: NOT STARTED
+### Milestone 8: Production Readiness 🚧
+**Status**: IN PROGRESS
 
-- Unit tests for backend
-- Frontend component tests
-- Integration tests
-- Mobile responsiveness testing
 - Performance optimization
-- Error handling improvements
-- Loading states and animations
-- Documentation updates
-
-### Milestone 7: Deployment & Production 🚧
-**Status**: NOT STARTED
-
-- Production Docker build
-- Environment-specific configs
-- Backup procedures
-- Monitoring setup
+- Additional unit tests
 - Security hardening
-- Performance tuning
+- Monitoring setup
+- Backup procedures
+- Load testing
 
 ## Key Features Implemented
 
 ### Authentication & Security
 - ✅ Token-based API authentication
-- ✅ JWT tokens with expiration
+- ✅ JWT tokens with expiration (1 hour default)
 - ✅ Per-agent basic auth for SWML access
 - ✅ Global basic auth option
 - ✅ Rate limiting on all endpoints
 - ✅ Audit logging with metadata
 - ✅ HTTPS only with TLS
+- ✅ SSRF prevention for media imports
+- ✅ File type validation and size limits
 
 ### Agent Configuration
 - ✅ JSONB storage for flexible configs
-- ✅ Voice and language selection
+- ✅ Voice and language selection with presets
 - ✅ Prompt sections with POM structure
 - ✅ Skills configuration with params
-- ✅ AI parameters (timeouts, model, etc.)
+- ✅ AI parameters (temperature, tokens, etc.)
 - ✅ Post-prompt with custom URL option
-- ✅ Hints for speech recognition
+- ✅ Hints (simple and pattern-based)
+- ✅ Knowledge base attachments
+- ✅ Media library integration
+- ✅ Custom pronunciations
+- ✅ Global data configuration
+- ✅ Contexts and steps
+- ✅ Native functions
+- ✅ Recording configuration
 
 ### SWML Generation
 - ✅ Real-time generation from config
@@ -187,31 +221,77 @@ Building a mobile-first, web-based interface for creating and managing SignalWir
 - ✅ Proper SignalWire SWML format
 - ✅ Basic auth integration
 - ✅ Public URLs for SignalWire access
+- ✅ Knowledge base skill integration
+- ✅ Media URL parameters
 
-## Notes for Next Session
+### Knowledge Base System
+- ✅ Document upload and processing
+- ✅ Vector search with pgvector
+- ✅ Multiple knowledge bases
+- ✅ Attach to multiple agents
+- ✅ Search configuration per agent
+- ✅ Document management UI
 
-1. Frontend setup will use:
-   - Create React App or Vite
-   - TypeScript for type safety
-   - Tailwind CSS for styling
-   - Shadcn/ui for components
-   - React Query for API state
-   - React Hook Form for forms
+### Media Library
+- ✅ Upload audio/video files
+- ✅ Import from external URLs
+- ✅ Persistent storage
+- ✅ Usage tracking
+- ✅ Category and search filters
+- ✅ Media preview/playback
+- ✅ Integration with agents
+- ✅ Admin quota settings
 
-2. Key UI components needed:
-   - Card components for agents
-   - Modal/Dialog for editors
-   - Form components with validation
-   - Select/Dropdown for choices
-   - Responsive navigation
+### Call Management
+- ✅ Call summary webhook endpoint
+- ✅ Detailed call transcripts
+- ✅ Usage metrics tracking
+- ✅ Recording playback
+- ✅ Save recordings to library
+- ✅ AI-generated summaries
 
-3. State management approach:
-   - Context for auth state
-   - React Query for server state
-   - Local state for UI interactions
+## Current Architecture
 
-4. Mobile-first considerations:
-   - Touch-friendly buttons/inputs
-   - Modals instead of sidebars
-   - Stack layouts on small screens
-   - SWML preview only on desktop
+### Frontend Stack
+- ✅ Vite for fast builds
+- ✅ React 18 with TypeScript
+- ✅ Tailwind CSS for styling
+- ✅ Shadcn/ui components
+- ✅ React Query for data fetching
+- ✅ React Hook Form for forms
+- ✅ Radix UI primitives
+- ✅ Lucide icons
+
+### Backend Stack
+- ✅ FastAPI with async support
+- ✅ SQLAlchemy with asyncpg
+- ✅ PostgreSQL with pgvector
+- ✅ Pydantic for validation
+- ✅ JWT authentication
+- ✅ Rate limiting
+- ✅ Nginx reverse proxy
+
+### Infrastructure
+- ✅ Docker containers
+- ✅ Docker Compose orchestration
+- ✅ Named volumes for persistence
+- ✅ Environment-based configuration
+- ✅ SSL/TLS with certificates
+- ✅ Supervisor for process management
+
+## Development Workflow
+
+1. **Making Changes**:
+   - Frontend: Edit files in `frontend/src/`
+   - Backend: Edit files in `backend/`
+   - Run `./rebuild.sh` to apply changes
+
+2. **Testing**:
+   - API: Run `./test-api.sh [endpoint]`
+   - UI: Access https://localhost:8430
+   - Database: `docker-compose exec db psql -U agent_builder`
+
+3. **Environment**:
+   - Copy `.env.example` to `.env`
+   - Configure hostnames and secrets
+   - Set rate limits and quotas

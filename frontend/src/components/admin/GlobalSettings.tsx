@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { toast } from '@/components/ui/use-toast'
 import { settingsApi } from '@/api/settings'
@@ -86,54 +85,6 @@ export function GlobalSettings() {
         </CardContent>
       </Card>
 
-      {/* Default Agent Settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-heading-secondary">Default Agent Settings</CardTitle>
-          <CardDescription>
-            Configure default values for new agents
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="default-voice">Default Voice</Label>
-            <Input
-              id="default-voice"
-              value={localSettings.default_voice || 'alloy'}
-              onChange={(e) => setLocalSettings({
-                ...localSettings,
-                default_voice: e.target.value
-              })}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="default-model">Default AI Model</Label>
-            <Input
-              id="default-model"
-              value={localSettings.default_ai_model || 'gpt-4o-mini'}
-              onChange={(e) => setLocalSettings({
-                ...localSettings,
-                default_ai_model: e.target.value
-              })}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="default-prompt">Default System Prompt</Label>
-            <Textarea
-              id="default-prompt"
-              value={localSettings.default_system_prompt || ''}
-              onChange={(e) => setLocalSettings({
-                ...localSettings,
-                default_system_prompt: e.target.value
-              })}
-              placeholder="You are a helpful AI assistant..."
-              rows={4}
-            />
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Security Settings */}
       <Card>

@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { Activity, Database, HardDrive, Cpu, Package, RefreshCw } from 'lucide-react'
+import { Activity, Database, HardDrive, Package, RefreshCw, Users, FolderOpen, BookOpen, Phone } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { systemApi } from '@/api/system'
@@ -64,27 +63,78 @@ export function SystemInfo() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-heading-secondary">Memory Usage</CardTitle>
+            <CardTitle className="text-sm font-medium text-heading-secondary">Database Size</CardTitle>
             <HardDrive className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {systemInfo?.memory_percent || 0}%
+              {systemInfo?.db_size_mb || 0} MB
             </div>
-            <Progress value={systemInfo?.memory_percent || 0} className="mt-2" />
+            <p className="text-xs text-muted-foreground">
+              Storage used
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-heading-secondary">CPU Usage</CardTitle>
-            <Cpu className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-heading-secondary">Total Agents</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {systemInfo?.cpu_percent || 0}%
+              {systemInfo?.stats?.agents || 0}
             </div>
-            <Progress value={systemInfo?.cpu_percent || 0} className="mt-2" />
+            <p className="text-xs text-muted-foreground">
+              Configured agents
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* System Statistics */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-heading-secondary">Media Files</CardTitle>
+            <FolderOpen className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{systemInfo?.stats?.media_files || 0}</div>
+            <p className="text-xs text-muted-foreground">Audio/Video files</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-heading-secondary">Knowledge Bases</CardTitle>
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{systemInfo?.stats?.knowledge_bases || 0}</div>
+            <p className="text-xs text-muted-foreground">Document collections</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-heading-secondary">Call Summaries</CardTitle>
+            <Phone className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{systemInfo?.stats?.call_summaries || 0}</div>
+            <p className="text-xs text-muted-foreground">Recorded calls</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-heading-secondary">Skills Available</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{systemInfo?.installed_skills || 0}</div>
+            <p className="text-xs text-muted-foreground">From SDK</p>
           </CardContent>
         </Card>
       </div>

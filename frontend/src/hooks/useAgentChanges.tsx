@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useToast } from '@/components/ui/use-toast';
+import { useBackend } from '@/contexts/BackendContext';
 
 interface AgentChange {
   id: string;
@@ -23,6 +24,7 @@ export function useAgentChanges() {
   const [recentChanges, setRecentChanges] = useState<AgentChange[]>([]);
   const eventSourceRef = useRef<EventSource | null>(null);
   const { toast } = useToast();
+  const { setConnected } = useBackend();
   
   const connect = useCallback(() => {
     // Clean up existing connection
@@ -37,6 +39,7 @@ export function useAgentChanges() {
     
     eventSource.addEventListener('connected', (event) => {
       console.log('SSE Connected:', JSON.parse(event.data));
+      setConnected(true);
     });
     
     eventSource.addEventListener('agent-changes', (event) => {
@@ -62,6 +65,7 @@ export function useAgentChanges() {
     
     eventSource.addEventListener('error', (event) => {
       console.error('SSE Error:', event);
+      setConnected(false);
       // Reconnect after 5 seconds
       setTimeout(() => {
         if (eventSourceRef.current === eventSource) {
@@ -71,7 +75,7 @@ export function useAgentChanges() {
     });
     
     eventSourceRef.current = eventSource;
-  }, [toast]);
+  }, [toast, setConnected]);
   
   useEffect(() => {
     connect();

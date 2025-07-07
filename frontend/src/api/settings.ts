@@ -57,12 +57,12 @@ export const settingsApi = {
   },
 
   getSecuritySettings: async (): Promise<SecuritySettings> => {
-    const response = await apiClient.get('/api/admin/security')
+    const response = await apiClient.get('/admin/security')
     return response.data
   },
 
   updateSecuritySettings: async (settings: SecuritySettings): Promise<SecuritySettings> => {
-    const response = await apiClient.put('/api/admin/security', settings)
+    const response = await apiClient.put('/admin/security', settings)
     return response.data
   },
 }

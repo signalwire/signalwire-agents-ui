@@ -4,12 +4,19 @@ export interface SystemInfo {
   status: 'healthy' | 'degraded' | 'unhealthy'
   uptime: string
   db_connections: number
+  db_size_mb: number
   memory_percent: number
   cpu_percent: number
   app_version: string
   environment: string
   sdk_version: string
   installed_skills: number
+  stats: {
+    agents: number
+    media_files: number
+    knowledge_bases: number
+    call_summaries: number
+  }
 }
 
 export interface AuditLog {
@@ -23,12 +30,12 @@ export interface AuditLog {
 
 export const systemApi = {
   getInfo: async (): Promise<SystemInfo> => {
-    const response = await apiClient.get('/api/admin/system/info')
+    const response = await apiClient.get('/admin/system/info')
     return response.data
   },
 
   getAuditLogs: async (limit: number = 10): Promise<AuditLog[]> => {
-    const response = await apiClient.get('/api/admin/audit-logs', {
+    const response = await apiClient.get('/admin/audit-logs', {
       params: { limit }
     })
     return response.data
