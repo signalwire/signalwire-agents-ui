@@ -4,7 +4,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -31,7 +30,7 @@ interface HintsConfigProps {
 
 export function HintsConfig({ open, onClose, config, onChange }: HintsConfigProps) {
   const [localConfig, setLocalConfig] = useState<HintsConfig>(config)
-  const [simpleHintsText, setSimpleHintsText] = useState(config.simple_hints.join('\n'))
+  const [newSimpleHint, setNewSimpleHint] = useState('')
   const [newPatternHint, setNewPatternHint] = useState({
     hint: '',
     pattern: '',
@@ -42,21 +41,28 @@ export function HintsConfig({ open, onClose, config, onChange }: HintsConfigProp
 
   useEffect(() => {
     setLocalConfig(config)
-    setSimpleHintsText(config.simple_hints.join('\n'))
   }, [config])
 
   const handleSave = () => {
-    // Parse simple hints from textarea
-    const simpleHints = simpleHintsText
-      .split('\n')
-      .map(hint => hint.trim())
-      .filter(hint => hint.length > 0)
-
-    onChange({
-      ...localConfig,
-      simple_hints: simpleHints
-    })
+    onChange(localConfig)
     onClose()
+  }
+
+  const addSimpleHint = () => {
+    if (!newSimpleHint.trim()) return
+
+    setLocalConfig({
+      ...localConfig,
+      simple_hints: [...localConfig.simple_hints, newSimpleHint.trim()]
+    })
+    setNewSimpleHint('')
+  }
+
+  const removeSimpleHint = (index: number) => {
+    setLocalConfig({
+      ...localConfig,
+      simple_hints: localConfig.simple_hints.filter((_, i) => i !== index)
+    })
   }
 
   const validateRegex = (pattern: string): boolean => {
@@ -120,27 +126,64 @@ export function HintsConfig({ open, onClose, config, onChange }: HintsConfigProp
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription>
-                Add one hint per line. These help the AI understand specific terms, acronyms, or phrases.
+                Add hints to help the AI understand specific terms, acronyms, or phrases.
               </AlertDescription>
             </Alert>
 
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="simple-hints">Simple Hints</Label>
-                <HelpTooltip content={helpContent.hints.simple} />
+            {/* Add new simple hint */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Add Simple Hint</CardTitle>
+                  <HelpTooltip content={helpContent.hints.simple} />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Input
+                    value={newSimpleHint}
+                    onChange={(e) => setNewSimpleHint(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && addSimpleHint()}
+                    placeholder="e.g., ACME Corporation is our company name"
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={addSimpleHint}
+                    disabled={!newSimpleHint.trim()}
+                    size="sm"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Hint
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Each hint should be a complete statement that helps the AI understand your terminology.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Existing simple hints */}
+            {localConfig.simple_hints.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Configured Simple Hints</h4>
+                <div className="space-y-2">
+                  {localConfig.simple_hints.map((hint, index) => (
+                    <Card key={index}>
+                      <CardContent className="flex items-center justify-between py-3">
+                        <p className="text-sm">{hint}</p>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeSimpleHint(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </div>
-              <Textarea
-                id="simple-hints"
-                value={simpleHintsText}
-                onChange={(e) => setSimpleHintsText(e.target.value)}
-                placeholder="ACME Corporation is our company name&#10;SKU means Stock Keeping Unit&#10;Our support hours are 9 AM to 5 PM EST"
-                rows={10}
-                className="font-mono text-sm"
-              />
-              <p className="text-xs text-muted-foreground">
-                Enter one hint per line. Each hint should be a complete statement.
-              </p>
-            </div>
+            )}
           </TabsContent>
 
           <TabsContent value="pattern" className="space-y-4">

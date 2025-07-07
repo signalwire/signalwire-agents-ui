@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { HelpCircle } from 'lucide-react'
 import {
   Tooltip,
@@ -22,15 +23,18 @@ export function HelpTooltip({
   maxWidth = '300px',
   className = ''
 }: HelpTooltipProps) {
+  const [open, setOpen] = useState(false)
+
   return (
     <TooltipProvider>
-      <Tooltip>
+      <Tooltip open={open} onOpenChange={setOpen}>
         <TooltipTrigger asChild>
           <Button
             type="button"
             variant="ghost"
             size="icon"
             className={`h-4 w-4 p-0 hover:bg-transparent ${className}`}
+            onClick={() => setOpen(!open)}
           >
             <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
           </Button>
@@ -39,6 +43,7 @@ export function HelpTooltip({
           side={side} 
           align={align}
           className={`max-w-[${maxWidth}] text-sm`}
+          onPointerDownOutside={() => setOpen(false)}
         >
           {content}
         </TooltipContent>
