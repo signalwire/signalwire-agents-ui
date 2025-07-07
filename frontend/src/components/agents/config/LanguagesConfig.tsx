@@ -27,6 +27,7 @@ interface LanguagesConfigProps {
 }
 
 export function LanguagesConfig({ languages, onChange, languageConfigs }: LanguagesConfigProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
   const [expandedLanguages, setExpandedLanguages] = useState<Set<string>>(new Set())
 
   const toggleExpanded = (id: string) => {
@@ -129,18 +130,39 @@ export function LanguagesConfig({ languages, onChange, languageConfigs }: Langua
     return sortedCodes
   }
 
+  // Generate summary for collapsed state
+  const getSummary = () => {
+    if (languages.length === 0) {
+      return 'No languages configured'
+    }
+    if (languages.length === 1) {
+      const lang = languages[0]
+      return `${lang.name} (${lang.code}) - ${lang.engine}`
+    }
+    return `${languages.length} languages configured`
+  }
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-heading-secondary">
-          <Globe className="h-5 w-5" />
-          Languages
-        </CardTitle>
-        <CardDescription>
-          Configure multiple languages and voices for your agent
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+      <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="cursor-pointer">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <CardTitle className="flex items-center gap-2 text-heading-secondary">
+                  <Globe className="h-5 w-5" />
+                  Languages
+                </CardTitle>
+                <CardDescription>
+                  {isExpanded ? 'Configure multiple languages and voices for your agent' : getSummary()}
+                </CardDescription>
+              </div>
+              {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+            </div>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="space-y-4 pt-0">
         {languages.map((language, index) => (
           <Card key={language.id}>
             <Collapsible
@@ -150,25 +172,40 @@ export function LanguagesConfig({ languages, onChange, languageConfigs }: Langua
               <CollapsibleTrigger asChild>
                 <CardHeader className="cursor-pointer">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
                         {expandedLanguages.has(language.id) ? (
-                          <ChevronUp className="h-4 w-4" />
+                          <ChevronUp className="h-4 w-4 flex-shrink-0" />
                         ) : (
-                          <ChevronDown className="h-4 w-4" />
+                          <ChevronDown className="h-4 w-4 flex-shrink-0" />
                         )}
-                        <span className="font-medium">
+                        <span className="font-medium truncate">
                           Language {index + 1}: {language.name}
                         </span>
                       </div>
-                      <Badge variant="secondary">{language.code}</Badge>
-                      <Badge variant="outline">{language.engine}</Badge>
+                      <div className="flex flex-wrap gap-1.5 ml-6">
+                        <Badge variant="secondary" className="text-xs">{language.code}</Badge>
+                        <Badge variant="outline" className="text-xs">{language.engine}</Badge>
+                        {language.voice && (
+                          <Badge variant="outline" className="text-xs truncate max-w-[150px]">
+                            {(() => {
+                              // For ElevenLabs, try to resolve the voice ID to a name
+                              if (language.engine === 'elevenlabs') {
+                                const matchingVoice = Object.values(ELEVENLABS_VOICE_MAP).find(v => v.id === language.voice)
+                                return matchingVoice ? matchingVoice.name : language.voice
+                              }
+                              return language.voice
+                            })()}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     {languages.length > 1 && (
                       <Button
                         type="button"
                         size="sm"
                         variant="ghost"
+                        className="flex-shrink-0 ml-2"
                         onClick={(e) => {
                           e.stopPropagation()
                           removeLanguage(language.id)
@@ -233,10 +270,8 @@ export function LanguagesConfig({ languages, onChange, languageConfigs }: Langua
                           const codeName = getAvailableLanguageCodes().find(([code]) => code === newCode)?.[1] || getLanguageName(newCode)
                           updateLanguage(language.id, { 
                             code: newCode,
-                            // Auto-update name if it matches the default
-                            ...(language.name === getLanguageName(language.code) && {
-                              name: codeName
-                            })
+                            // Always update the name to match the selected language
+                            name: codeName
                           })
                         }}
                       >
@@ -375,7 +410,9 @@ export function LanguagesConfig({ languages, onChange, languageConfigs }: Langua
           <Plus className="h-4 w-4 mr-2" />
           Add Language
         </Button>
-      </CardContent>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   )
 }

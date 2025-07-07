@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import { ArrowLeft, Save, Plus, Shield, Settings, Hash, Mic, Database, Zap, Circle, FileText, Network, Copy } from 'lucide-react'
+import { ArrowLeft, Save, Plus, Shield, Settings, Hash, Mic, Database, Zap, Circle, FileText, Network, Copy, Brain } from 'lucide-react'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -129,6 +129,7 @@ export function AgentBuilderPage() {
   const [showPostPromptConfig, setShowPostPromptConfig] = useState(false)
   const [showContextsStepsConfig, setShowContextsStepsConfig] = useState(false)
   const [showKnowledgeBaseSelector, setShowKnowledgeBaseSelector] = useState(false)
+  const [showLLMParams, setShowLLMParams] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [showDiscardDialog, setShowDiscardDialog] = useState(false)
   const [showNavigateDialog, setShowNavigateDialog] = useState(false)
@@ -789,36 +790,36 @@ export function AgentBuilderPage() {
           languageConfigs={languageConfigs}
         />
 
-        {/* LLM Parameters */}
-        <LLMParamsCard
-          promptParams={promptLLMParams}
-          postPromptParams={postPromptLLMParams}
-          onPromptParamsChange={setPromptLLMParamsWithTracking}
-          onPostPromptParamsChange={setPostPromptLLMParamsWithTracking}
-        />
+        {/* Agent Instructions - Full width card */}
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setShowPromptBuilder(true)}
+        >
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between text-heading-secondary">
+              Agent Instructions
+              <Plus className="h-4 w-4" />
+            </CardTitle>
+            <CardDescription>
+              Configure the agent's personality, behavior, and conversation style
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                {promptSections.length > 0 
+                  ? `${promptSections.length} prompt section${promptSections.length === 1 ? '' : 's'} configured`
+                  : 'No instructions configured yet'}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Click to add instructions that define how your agent behaves and responds
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Agent Configuration Cards */}
         <div className="grid gap-4 md:grid-cols-2">
-          {/* Prompt Builder */}
-          <Card 
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => setShowPromptBuilder(true)}
-          >
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between text-heading-card">
-                Agent Instructions
-                <Plus className="h-4 w-4" />
-              </CardTitle>
-              <CardDescription>
-                {promptSections.length} prompt sections configured
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Click to configure the agent's personality and instructions
-              </p>
-            </CardContent>
-          </Card>
 
           {/* Skills */}
           <Card 
@@ -858,6 +859,27 @@ export function AgentBuilderPage() {
             <CardContent>
               <p className="text-sm text-muted-foreground">
                 Click to adjust timeouts, model, and other settings
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* LLM Parameters */}
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => setShowLLMParams(true)}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between text-heading-card">
+                LLM Parameters
+                <Brain className="h-4 w-4" />
+              </CardTitle>
+              <CardDescription>
+                Fine-tune model behavior
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Click to adjust temperature, penalties, and other LLM settings
               </p>
             </CardContent>
           </Card>
@@ -1152,6 +1174,27 @@ export function AgentBuilderPage() {
             <KnowledgeBaseConfig
               attachments={knowledgeBaseAttachments}
               onAttachmentsChange={setKnowledgeBaseAttachmentsWithTracking}
+            />
+          </DialogContent>
+        </Dialog>
+
+        {/* LLM Parameters Dialog */}
+        <Dialog
+          open={showLLMParams}
+          onOpenChange={setShowLLMParams}
+        >
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>LLM Parameters</DialogTitle>
+              <DialogDescription>
+                Fine-tune language model behavior for prompts and post-prompts
+              </DialogDescription>
+            </DialogHeader>
+            <LLMParamsCard
+              promptParams={promptLLMParams}
+              postPromptParams={postPromptLLMParams}
+              onPromptParamsChange={setPromptLLMParamsWithTracking}
+              onPostPromptParamsChange={setPostPromptLLMParamsWithTracking}
             />
           </DialogContent>
         </Dialog>
