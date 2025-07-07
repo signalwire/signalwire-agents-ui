@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
-import { LogOut, HelpCircle } from 'lucide-react'
+import { LogOut, HelpCircle, Menu, X } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { useTheme } from '@/components/theme-provider'
@@ -17,6 +17,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   const location = useLocation()
   const { theme } = useTheme()
   const [showHelp, setShowHelp] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   // Determine which logo to use based on theme
   const logoSrc = theme === 'dark' || 
@@ -39,7 +40,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                 />
                 <span className="text-sm sm:text-lg font-semibold whitespace-nowrap">Agent Builder</span>
               </Link>
-              <nav className="hidden md:flex items-center gap-4">
+              <nav className="hidden md:flex items-center gap-4 select-none">
                 <Link
                   to="/agents"
                   className={`text-sm font-medium transition-colors hover:text-nav-hover ${
@@ -84,6 +85,16 @@ export function MainLayout({ children }: MainLayoutProps) {
             </div>
             
             <div className="flex items-center gap-2 sm:gap-4">
+              {/* Mobile menu button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden h-8 w-8"
+              >
+                {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+                <span className="sr-only">Toggle menu</span>
+              </Button>
               <span className="text-xs sm:text-sm text-muted-foreground hidden lg:inline truncate max-w-[100px] sm:max-w-none">
                 {tokenName}
               </span>
@@ -111,6 +122,59 @@ export function MainLayout({ children }: MainLayoutProps) {
           </div>
         </div>
       </header>
+
+      {/* Mobile navigation menu */}
+      {mobileMenuOpen && (
+        <nav className="md:hidden border-b bg-background">
+          <div className="container mx-auto px-4 py-2 space-y-1">
+            <Link
+              to="/agents"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block py-2 px-3 rounded-md text-sm font-medium transition-colors hover:bg-accent ${
+                location.pathname.startsWith('/agents') ? 'text-nav-active bg-accent/50' : 'text-muted-foreground'
+              }`}
+            >
+              Agents
+            </Link>
+            <Link
+              to="/knowledge-bases"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block py-2 px-3 rounded-md text-sm font-medium transition-colors hover:bg-accent ${
+                location.pathname.startsWith('/knowledge-bases') ? 'text-nav-active bg-accent/50' : 'text-muted-foreground'
+              }`}
+            >
+              Knowledge Bases
+            </Link>
+            <Link
+              to="/call-summaries"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block py-2 px-3 rounded-md text-sm font-medium transition-colors hover:bg-accent ${
+                location.pathname === '/call-summaries' ? 'text-nav-active bg-accent/50' : 'text-muted-foreground'
+              }`}
+            >
+              Call Summaries
+            </Link>
+            <Link
+              to="/skills"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block py-2 px-3 rounded-md text-sm font-medium transition-colors hover:bg-accent ${
+                location.pathname.startsWith('/skills') ? 'text-nav-active bg-accent/50' : 'text-muted-foreground'
+              }`}
+            >
+              Skills
+            </Link>
+            <Link
+              to="/admin"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block py-2 px-3 rounded-md text-sm font-medium transition-colors hover:bg-accent ${
+                location.pathname.startsWith('/admin') ? 'text-nav-active bg-accent/50' : 'text-muted-foreground'
+              }`}
+            >
+              Admin
+            </Link>
+          </div>
+        </nav>
+      )}
 
       {/* Main content */}
       <main className="container mx-auto px-4 py-6">

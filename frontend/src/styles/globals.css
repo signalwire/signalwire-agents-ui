@@ -78,4 +78,23 @@
   h1, h2, h3, h4, h5, h6 {
     @apply text-heading;
   }
+  
+  /* Prevent text selection on UI elements */
+  button, nav, label, .card-header, .card-title {
+    @apply select-none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  
+  /* Prevent zoom on input focus on mobile */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+  
+  /* Ensure proper mobile meta viewport (handled in HTML, but reinforce here) */
+  @media (max-width: 768px) {
+    input:focus, textarea:focus, select:focus {
+      font-size: 16px !important;
+    }
+  }
 }

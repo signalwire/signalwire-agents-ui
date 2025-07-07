@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import { ArrowLeft, Save, Plus, Shield, Settings, Hash, Mic, Database, Zap, Circle, FileText, Network, Copy, Brain } from 'lucide-react'
+import { ArrowLeft, Save, Plus, Shield, Settings, Hash, Mic, Database, Zap, Circle, FileText, Network, Copy, Brain, Trash2 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -130,7 +131,7 @@ export function AgentBuilderPage() {
   const [showContextsStepsConfig, setShowContextsStepsConfig] = useState(false)
   const [showKnowledgeBaseSelector, setShowKnowledgeBaseSelector] = useState(false)
   const [showLLMParams, setShowLLMParams] = useState(false)
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [changeCount, setChangeCount] = useState(0)
   const [showDiscardDialog, setShowDiscardDialog] = useState(false)
   const [showNavigateDialog, setShowNavigateDialog] = useState(false)
   const [pendingNavigationPath, setPendingNavigationPath] = useState<string | null>(null)
@@ -155,7 +156,7 @@ export function AgentBuilderPage() {
       }])
     }
   }, [isEditMode, copyId])
-  const hasChanges = hasUnsavedChanges || isDirty
+  const hasChanges = changeCount > 0 || isDirty
 
   // Handle navigation with unsaved changes
   const handleNavigation = (path: string) => {
@@ -263,7 +264,7 @@ export function AgentBuilderPage() {
       }
       
       // Reset change tracking
-      setHasUnsavedChanges(false)
+      setChangeCount(0)
       setShowDiscardDialog(false)
       
       // Force form to reset dirty state
@@ -276,7 +277,7 @@ export function AgentBuilderPage() {
     return (value: React.SetStateAction<T>) => {
       setter(value)
       if (isEditMode) {
-        setHasUnsavedChanges(true)
+        setChangeCount(prev => prev + 1)
       }
     }
   }
@@ -455,7 +456,7 @@ export function AgentBuilderPage() {
       }
       
       // Reset unsaved changes flag when agent is loaded
-      setHasUnsavedChanges(false)
+      setChangeCount(0)
     }
   }, [agent, languageConfigs, setValue])
 
@@ -527,7 +528,7 @@ export function AgentBuilderPage() {
     onSuccess: () => {
       toast({ title: 'Agent created successfully' })
       queryClient.invalidateQueries({ queryKey: ['agents'] })
-      setHasUnsavedChanges(false)
+      setChangeCount(0)
       navigate('/agents')
     },
     onError: (error: any) => {
@@ -667,7 +668,7 @@ export function AgentBuilderPage() {
       toast({ title: 'Agent updated successfully' })
       queryClient.invalidateQueries({ queryKey: ['agents'] })
       queryClient.invalidateQueries({ queryKey: ['agent', id] })
-      setHasUnsavedChanges(false)
+      setChangeCount(0)
       navigate('/agents')
     },
     onError: (error: any) => {
@@ -691,27 +692,30 @@ export function AgentBuilderPage() {
     <MainLayout>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-2 sm:gap-4">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => handleNavigation('/agents')}
-              className="flex-shrink-0"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div className="min-w-0">
-              <h1 className="text-lg sm:text-2xl font-bold text-heading-primary whitespace-nowrap">
-                {isEditMode ? 'Edit Agent' : copyId ? 'Copy Agent' : 'Create New Agent'}
-              </h1>
-              <p className="text-sm sm:text-base text-muted-foreground">
-                {copyId ? 'Creating a copy of an existing agent' : 'Configure your SignalWire AI agent'}
-              </p>
-            </div>
+        {/* Header with title */}
+        <div className="flex items-center gap-2 sm:gap-4 mb-4">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => handleNavigation('/agents')}
+            className="flex-shrink-0"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-2xl font-bold text-heading-primary whitespace-nowrap">
+              {isEditMode ? 'Edit Agent' : copyId ? 'Copy Agent' : 'Create New Agent'}
+            </h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
+              {copyId ? 'Creating a copy of an existing agent' : 'Configure your SignalWire AI agent'}
+            </p>
           </div>
-          <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+        </div>
+
+        {/* Sticky button row */}
+        <div className="sticky top-0 z-50 bg-background pb-4 -mx-2 px-2">
+          <div className="flex justify-end gap-2 flex-nowrap overflow-x-auto border-b pb-4">
             {hasChanges && isEditMode && (
               <Button
                 type="button"
@@ -719,7 +723,8 @@ export function AgentBuilderPage() {
                 onClick={() => setShowDiscardDialog(true)}
                 className="text-sm"
               >
-                Discard Changes
+                <Trash2 className="h-4 w-4 mr-2" />
+                Discard
               </Button>
             )}
             {isEditMode && (
@@ -740,7 +745,15 @@ export function AgentBuilderPage() {
               className="text-sm"
             >
               <Save className="h-4 w-4 mr-2" />
-              {isEditMode ? 'Save Changes' : 'Create Agent'}
+              {isEditMode ? 'Save Agent' : 'Create Agent'}
+              {hasChanges && changeCount > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="ml-2 h-5 min-w-[1.25rem] px-1 flex items-center justify-center text-xs"
+                >
+                  {changeCount > 9 ? '9+' : changeCount}
+                </Badge>
+              )}
             </Button>
           </div>
         </div>
