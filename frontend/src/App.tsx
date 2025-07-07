@@ -8,6 +8,8 @@ import { AdminPage } from '@/pages/Admin'
 import { SkillsMarketplacePage } from '@/pages/SkillsMarketplace'
 import { CallSummariesPage } from '@/pages/CallSummaries'
 import { AllCallSummariesPage } from '@/pages/AllCallSummaries'
+import { KnowledgeBasesPage } from '@/pages/KnowledgeBases'
+import { KnowledgeBaseDetailPage } from '@/pages/KnowledgeBaseDetail'
 import { Toaster } from '@/components/ui/toaster'
 import { ThemeProvider } from '@/components/theme-provider'
 
@@ -86,6 +88,33 @@ function App() {
             element={
               <ProtectedRoute>
                 <SkillsMarketplacePage />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/knowledge-bases"
+            element={
+              <ProtectedRoute>
+                <KnowledgeBasesPage />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/knowledge-bases/new"
+            element={
+              <ProtectedRoute>
+                <KnowledgeBaseDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/knowledge-bases/:id"
+            element={
+              <ProtectedRoute>
+                <KnowledgeBaseDetailPage />
               </ProtectedRoute>
             }
           />

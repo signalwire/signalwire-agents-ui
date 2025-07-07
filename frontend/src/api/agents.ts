@@ -59,6 +59,17 @@ export interface AgentConfig {
   }
   prompt_llm_params?: Record<string, any>
   post_prompt_llm_params?: Record<string, any>
+  knowledge_base_ids?: string[]
+  knowledge_base_config?: {
+    knowledge_base_ids: string[]
+    search_strategy: 'all' | 'round_robin' | 'fallback'
+    similarity_threshold?: number
+    search_count?: number
+  }
+  knowledge_bases?: Array<{
+    id: string
+    config?: Record<string, any>
+  }>
 }
 
 export interface Agent {
@@ -71,6 +82,10 @@ export interface Agent {
   updated_at: string
   updated_by?: string
   version?: number
+  knowledge_bases?: Array<{
+    id: string
+    name: string
+  }>
 }
 
 export interface CreateAgentRequest {

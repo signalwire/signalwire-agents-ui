@@ -9,7 +9,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from .core.config import settings
-from .api import auth, agents, swml, admin, swaig, skills, native_functions, skills_marketplace, skills_unified, skills_test, post_prompt, changes, call_summaries, env_vars, knowledge_base
+from .api import auth, agents, swml, admin, swaig, skills, native_functions, skills_marketplace, skills_unified, skills_test, post_prompt, changes, call_summaries, env_vars, knowledge_bases, agent_knowledge_bases, knowledge_base_documents
 
 # Configure logging
 logging.basicConfig(
@@ -30,10 +30,19 @@ async def lifespan(app: FastAPI):
     logger.info(f"Environment: {'DEBUG' if settings.debug else 'PRODUCTION'}")
     logger.info(f"Database: {settings.database_url.split('@')[1] if '@' in settings.database_url else 'configured'}")
     
-    # Run database migrations
-    from .core.migrations import run_migrations_on_startup
-    logger.info("Running database migrations...")
-    await run_migrations_on_startup()
+    # Migrations are now run in start-backend.sh before workers start
+    # This prevents multiple workers from trying to run migrations simultaneously
+    
+    # Preload the embedding model for faster first search
+    try:
+        logger.info("Preloading embedding model...")
+        from .services.embedding_service import EmbeddingService
+        embedding_service = EmbeddingService()
+        embedding_service.get_model()
+        logger.info("Embedding model preloaded successfully")
+    except Exception as e:
+        logger.warning(f"Failed to preload embedding model: {e}")
+        # Don't fail startup if model preload fails
     
     yield
     logger.info("Shutting down SignalWire Agent Builder API")
@@ -77,7 +86,9 @@ app.include_router(post_prompt.router)  # Post-prompt handler endpoint
 app.include_router(changes.router, prefix="/api")  # SSE changes endpoint
 app.include_router(call_summaries.router, prefix="/api")  # Call summaries endpoints
 app.include_router(env_vars.router)  # Environment variables endpoints
-app.include_router(knowledge_base.router)  # Knowledge base endpoints
+app.include_router(knowledge_bases.router, prefix="/api")  # Standalone knowledge bases
+app.include_router(agent_knowledge_bases.router, prefix="/api")  # Agent-KB associations
+app.include_router(knowledge_base_documents.router, prefix="/api")  # KB document management
 
 # Health check endpoint
 @app.get("/api/health")

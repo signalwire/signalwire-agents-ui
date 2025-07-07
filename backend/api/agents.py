@@ -48,7 +48,9 @@ class AgentConfig(BaseModel):
     record_stereo: bool = Field(default=True, description="Record in stereo")
     post_prompt_config: Optional[Dict[str, Any]] = Field(None, description="Post-prompt summary configuration")
     contexts_steps_config: Optional[Dict[str, Any]] = Field(None, description="Contexts and steps configuration")
-    knowledge_base: Optional[Dict[str, Any]] = Field(None, description="Knowledge base configuration")
+    knowledge_base: Optional[Dict[str, Any]] = Field(None, description="Knowledge base configuration (legacy)")
+    knowledge_base_config: Optional[Dict[str, Any]] = Field(None, description="Knowledge base configuration")
+    knowledge_base_ids: Optional[List[str]] = Field(None, description="List of knowledge base IDs")
     prompt_llm_params: Optional[Dict[str, Any]] = Field(None, description="LLM parameters for main prompt")
     post_prompt_llm_params: Optional[Dict[str, Any]] = Field(None, description="LLM parameters for post-prompt")
 
@@ -78,6 +80,7 @@ class AgentResponse(BaseModel):
     updated_at: datetime
     updated_by: Optional[str] = None
     version: Optional[int] = None
+    knowledge_bases: Optional[List[Dict[str, Any]]] = None
 
 
 def format_swml_url(agent_id: str, config: Dict[str, Any]) -> str:
@@ -100,6 +103,28 @@ async def list_agents(
     result = await db.execute(select(Agent).order_by(Agent.created_at.desc()))
     agents = result.scalars().all()
     
+    # Get knowledge bases for all agents in one query
+    from ..models import AgentKnowledgeBase, KnowledgeBase
+    agent_ids = [agent.id for agent in agents]
+    kb_result = await db.execute(
+        select(AgentKnowledgeBase, KnowledgeBase)
+        .join(KnowledgeBase)
+        .where(AgentKnowledgeBase.agent_id.in_(agent_ids))
+        .order_by(AgentKnowledgeBase.attached_at)
+    ) if agent_ids else []
+    
+    # Group knowledge bases by agent
+    agent_kbs = {}
+    for akb, kb in kb_result:
+        if akb.agent_id not in agent_kbs:
+            agent_kbs[akb.agent_id] = []
+        agent_kbs[akb.agent_id].append({
+            "id": str(kb.id),
+            "name": kb.name,
+            "description": kb.description,
+            "config": akb.config or {}
+        })
+    
     return [
         AgentResponse(
             id=agent.id,
@@ -110,7 +135,8 @@ async def list_agents(
             created_at=agent.created_at,
             updated_at=agent.updated_at,
             updated_by=agent.updated_by,
-            version=agent.version
+            version=agent.version,
+            knowledge_bases=agent_kbs.get(agent.id, [])
         )
         for agent in agents
     ]
@@ -179,6 +205,24 @@ async def get_agent(
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
     
+    # Get attached knowledge bases
+    from ..models import AgentKnowledgeBase, KnowledgeBase
+    kb_result = await db.execute(
+        select(AgentKnowledgeBase, KnowledgeBase)
+        .join(KnowledgeBase)
+        .where(AgentKnowledgeBase.agent_id == agent_id)
+        .order_by(AgentKnowledgeBase.attached_at)
+    )
+    
+    knowledge_bases = []
+    for akb, kb in kb_result:
+        knowledge_bases.append({
+            "id": str(kb.id),
+            "name": kb.name,
+            "description": kb.description,
+            "config": akb.config or {}
+        })
+    
     return AgentResponse(
         id=agent.id,
         name=agent.name,
@@ -188,7 +232,8 @@ async def get_agent(
         created_at=agent.created_at,
         updated_at=agent.updated_at,
         updated_by=agent.updated_by,
-        version=agent.version
+        version=agent.version,
+        knowledge_bases=knowledge_bases
     )
 
 

@@ -113,17 +113,7 @@ async def handle_swaig_function(
             logger.error(f"Failed to decode auth header: {e}")
             auth_header = None  # Fall through to other auth methods
     
-    # Try global_data token next (new preferred method)
-    if not agent_id and request.global_data and "auth_token" in request.global_data:
-        try:
-            token_data = decode_skill_jwt_token(request.global_data["auth_token"])
-            agent_id = token_data.get("agent_id")
-            skill_name = token_data.get("skill_name", "general")
-            skill_params = token_data.get("skill_params", {})
-        except Exception as e:
-            logger.error(f"Failed to decode global_data token: {e}", exc_info=True)
-    
-    # Fall back to meta_data token if no Basic auth or global_data
+    # Fall back to meta_data token if no Basic auth
     if not agent_id and request.meta_data and "token" in request.meta_data:
         try:
             token_data = decode_skill_jwt_token(request.meta_data["token"])
@@ -138,18 +128,64 @@ async def handle_swaig_function(
         raise HTTPException(status_code=401, detail="Missing authentication")
     
     logger.info(f"SWAIG function call: agent={agent_id}, skill={skill_name}, function={request.function}")
-    logger.info(f"SWAIG arguments: {request.argument}")
     
-    # Handle knowledge base search specially
-    if request.function == "search_knowledge_base":
+    # Handle knowledge base search functions
+    # Check if this is a knowledge base search function based on skill_name or function name
+    is_kb_search = False
+    kb_id = None
+    kb_config = {}
+    
+    # Check if this is a KB search based on skill_name from token
+    if skill_name == "builtin_knowledge_base":
+        is_kb_search = True
+        # For builtin KB, we need to get the KB info from skill_params in the token
+        kb_id = skill_params.get("knowledge_base_id")
+        if kb_id:
+            kb_config = {
+                "response_prefix": skill_params.get("response_prefix", ""),
+                "response_postfix": skill_params.get("response_postfix", ""),
+                "no_results_message": skill_params.get("no_results_message", "No information found for '{query}'")
+            }
+    elif skill_name == "kb_search" and skill_params:
+        is_kb_search = True
+        kb_id = skill_params.get("knowledge_base_id")
+        kb_config = {
+            "response_prefix": skill_params.get("response_prefix", ""),
+            "response_postfix": skill_params.get("response_postfix", ""),
+            "no_results_message": skill_params.get("no_results_message", "No information found for '{query}'")
+        }
+    # Check if meta_data contains knowledge_base_id (for backward compatibility)
+    elif request.meta_data and "knowledge_base_id" in request.meta_data:
+        is_kb_search = True
+        kb_id = request.meta_data["knowledge_base_id"]
+        kb_config = {
+            "response_prefix": request.meta_data.get("response_prefix", ""),
+            "response_postfix": request.meta_data.get("response_postfix", ""),
+            "no_results_message": request.meta_data.get("no_results_message", "No information found for '{query}'")
+        }
+    # Also handle legacy search_knowledge_base function
+    elif request.function == "search_knowledge_base":
+        is_kb_search = True
+    
+    if is_kb_search:
         # Get agent to check if KB is enabled
+        from sqlalchemy import select
+        from ..models import AgentKnowledgeBase, KnowledgeBase
+        
         agent = await db.get(Agent, agent_id)
         if not agent:
             raise HTTPException(status_code=404, detail="Agent not found")
         
-        if not agent.config.get("knowledge_base", {}).get("enabled", False):
+        # Check if agent has knowledge bases
+        result = await db.execute(
+            select(AgentKnowledgeBase)
+            .where(AgentKnowledgeBase.agent_id == agent_id)
+        )
+        agent_kbs = result.scalars().all()
+        
+        if not agent_kbs:
             return SWAIGResponse(
-                response="Knowledge base is not enabled for this agent."
+                response="No knowledge bases are configured for this agent."
             )
         
         # Use the knowledge base skill directly
@@ -165,11 +201,27 @@ async def handle_swaig_function(
             else:
                 actual_args = {}
         
-        # Perform search
-        result = await kb_skill.search_knowledge_base(
-            query=actual_args.get("query", ""),
-            count=actual_args.get("count", 3)
-        )
+        # Perform search with specific KB if provided
+        if kb_id:
+            # Search specific knowledge base
+            try:
+                result = await kb_skill.search_specific_knowledge_base(
+                    kb_id=kb_id,
+                    query=actual_args.get("query", ""),
+                    count=actual_args.get("count", 3),
+                    response_prefix=kb_config.get("response_prefix", ""),
+                    response_postfix=kb_config.get("response_postfix", ""),
+                    no_results_message=kb_config.get("no_results_message")
+                )
+            except Exception as e:
+                logger.error(f"KB search error: {e}", exc_info=True)
+                raise
+        else:
+            # Search all knowledge bases
+            result = await kb_skill.search_knowledge_base(
+                query=actual_args.get("query", ""),
+                count=actual_args.get("count", 3)
+            )
         
         return SWAIGResponse(
             response=result["answer"],
@@ -209,15 +261,31 @@ async def handle_swaig_function(
                 "stop_background_file": "play_background_file",
             }
             
-            skill_name = function_to_skill.get(request.function)
-            if not skill_name:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Unknown function: {request.function}"
-                )
+            # Define internal skills that don't map to external skill modules
+            internal_skills = {
+                "builtin_knowledge_base": lambda fn: True,  # All unmapped functions default to KB for now
+                # Future internal skills can be added here with their detection logic
+                # "builtin_workflow": lambda fn: fn.startswith("workflow_"),
+                # "builtin_integration": lambda fn: fn.startswith("integrate_"),
+            }
+            
+            mapped_skill = function_to_skill.get(request.function)
+            if mapped_skill:
+                skill_name = mapped_skill
+            else:
+                # Check if it's an internal skill
+                for internal_skill, detection_func in internal_skills.items():
+                    if detection_func(request.function):
+                        skill_name = internal_skill
+                        logger.info(f"Function {request.function} detected as {internal_skill}")
+                        break
+                else:
+                    # Unknown function
+                    logger.warning(f"Function {request.function} not found in mappings or internal skills")
+                    skill_name = "builtin_knowledge_base"  # Default to KB for backward compatibility
             
             # Get the actual skill params from the agent's configuration
-            if agent_id:
+            if agent_id and skill_name != "general":
                 agent = await db.get(Agent, agent_id)
                 if agent and agent.config.get('skills'):
                     for skill_config in agent.config['skills']:
@@ -225,15 +293,16 @@ async def handle_swaig_function(
                             skill_params = skill_config.get('params', {})
                             break
         
-        # Add the skill to the agent
-        try:
-            ephemeral_agent.add_skill(skill_name, skill_params)
-        except Exception as e:
-            logger.error(f"Failed to add skill {skill_name}: {e}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to load skill: {str(e)}"
-            )
+        # Add the skill to the agent (only if it's not internal)
+        if skill_name not in ["general", "builtin_knowledge_base"]:
+            try:
+                ephemeral_agent.add_skill(skill_name, skill_params)
+            except Exception as e:
+                logger.error(f"Failed to add skill {skill_name}: {e}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to load skill: {str(e)}"
+                )
         
         # Skills are automatically registered when added, no need to initialize
         

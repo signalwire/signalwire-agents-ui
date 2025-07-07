@@ -8,7 +8,7 @@ from uuid import UUID
 import secrets
 
 from ..core.database import get_db
-from ..models import Agent, Setting
+from ..models import Agent, Setting, AgentKnowledgeBase, KnowledgeBase
 from ..core.swml_generator import generate_swml
 from ..core.config import settings
 from slowapi import Limiter
@@ -88,8 +88,32 @@ async def get_agent_swml(
                         headers={"WWW-Authenticate": "Basic"},
                     )
     
+    # Get agent's knowledge bases with their configurations
+    kb_result = await db.execute(
+        select(AgentKnowledgeBase, KnowledgeBase)
+        .join(KnowledgeBase)
+        .where(AgentKnowledgeBase.agent_id == agent_id)
+        .order_by(AgentKnowledgeBase.attached_at)
+    )
+    
+    knowledge_bases = []
+    for akb, kb in kb_result:
+        kb_info = {
+            "id": str(kb.id),
+            "name": kb.name,
+            "description": kb.description,
+            "settings": kb.settings or {},
+            "config": akb.config or {}  # Agent-specific KB config
+        }
+        knowledge_bases.append(kb_info)
+    
+    # Add knowledge bases to agent config
+    enriched_config = agent.config.copy()
+    enriched_config["knowledge_bases"] = knowledge_bases
+    enriched_config["knowledge_base_ids"] = [kb["id"] for kb in knowledge_bases]
+    
     # Generate SWML with db session for env var resolution
-    swml = await generate_swml(agent.config, str(agent.id), db)
+    swml = await generate_swml(enriched_config, str(agent.id), db)
     
     # Return as JSON with proper content type
     return JSONResponse(

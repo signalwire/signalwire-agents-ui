@@ -307,27 +307,67 @@ async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=
                 logger.warning(f"Could not add skill {skill_name}: {e}")
                 # Don't fall back to manual registration - let the SDK handle it
     
-    # Add knowledge base function if enabled
-    if agent_config.get('knowledge_base', {}).get('enabled', False):
-        logger.info("Knowledge base is enabled, adding search_knowledge_base function")
-        agent.register_swaig_function(
-            name="search_knowledge_base",
-            description="Search the agent's knowledge base for relevant information",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "The search query"
+    # Add knowledge base functions if agent has knowledge bases
+    knowledge_bases = agent_config.get('knowledge_bases', [])
+    if knowledge_bases:
+        logger.info(f"Agent has {len(knowledge_bases)} knowledge bases, adding search functions")
+        
+        # Create a prompt section for knowledge bases
+        section_title = "Knowledge Search"
+        section_body = "You have access to the following knowledge bases:"
+        bullets = []
+        
+        for i, kb in enumerate(knowledge_bases):
+            kb_id = kb.get('id')
+            kb_name = kb.get('name', f'Knowledge Base {i+1}')
+            kb_description = kb.get('description', '')
+            kb_config = kb.get('config', {})
+            
+            # Get tool configuration from agent-KB config or use defaults
+            tool_name = kb_config.get('tool_name', f'search_{kb_name.lower().replace(" ", "_")}')
+            tool_description = kb_config.get('tool_description', kb_description or f'Search {kb_name} for information')
+            response_prefix = kb_config.get('response_prefix', '')
+            response_postfix = kb_config.get('response_postfix', '')
+            no_results_message = kb_config.get('no_results_message', f"No information found in {kb_name} for '{{query}}'")
+            default_count = kb_config.get('default_result_count', 3)
+            
+            # Define the tool for this knowledge base
+            agent.define_tool(
+                name=tool_name,
+                description=tool_description,
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The search query"
+                        },
+                        "count": {
+                            "type": "integer",
+                            "description": f"Number of results to return",
+                            "default": default_count
+                        }
                     },
-                    "count": {
-                        "type": "integer",
-                        "description": "Number of results to return",
-                        "default": 3
-                    }
+                    "required": ["query"]
                 },
-                "required": ["query"]
-            }
+                handler=None,  # No local handler since this is handled by the webhook
+                # Store KB-specific config in meta_data for the SWAIG handler
+                meta_data={
+                    "knowledge_base_id": kb_id,
+                    "response_prefix": response_prefix,
+                    "response_postfix": response_postfix,
+                    "no_results_message": no_results_message
+                }
+            )
+            
+            # Add bullet for this KB
+            bullets.append(f"Use {tool_name} to {tool_description}")
+        
+        # Add the prompt section
+        agent.prompt_add_section(
+            title=section_title,
+            body=section_body,
+            bullets=bullets
         )
     
     # Configure post-prompt based on agent config
@@ -393,15 +433,20 @@ async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=
             for section in swml_doc['sections']['main']:
                 if 'ai' in section and 'SWAIG' in section['ai'] and 'functions' in section['ai']['SWAIG']:
                     for function in section['ai']['SWAIG']['functions']:
-                        # Replace the SDK's webhook URL with our own
-                        function['web_hook_url'] = f"https://{settings.hostname}:{settings.port}/api/swaig/function"
+                        # Remove the SDK's per-function webhook URL - we'll use the global default
+                        if 'web_hook_url' in function:
+                            del function['web_hook_url']
                         
-                        # Add function-specific token to meta_data for backward compatibility
-                        if 'meta_data' not in function:
-                            function['meta_data'] = {}
+                        # Preserve existing meta_data and add token
+                        existing_meta_data = function.get('meta_data', {})
                         
                         # Find the skill that provides this function
                         function_name = function.get('function', '')
+                        
+                        # Generate a unique meta_data_token for this function
+                        import hashlib
+                        meta_data_token = hashlib.md5(function_name.encode()).hexdigest()
+                        function['meta_data_token'] = meta_data_token
                         skill_name = None
                         skill_params = {}
                         
@@ -418,16 +463,54 @@ async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=
                         }
                         
                         skill_name = function_to_skill.get(function_name)
+                        logger.info(f"Function {function_name} mapped to skill: {skill_name}")
                         if skill_name:
                             # Find skill params from agent config
                             for skill_config in agent_config.get('skills', []):
                                 if skill_config.get('name') == skill_name:
                                     skill_params = skill_config.get('params', {})
+                                    logger.info(f"Found skill params for {skill_name}: {list(skill_params.keys())}")
                                     break
+                        else:
+                            # Check if this is a knowledge base function by matching against KB tool names
+                            kb_found = False
+                            for kb in knowledge_bases:
+                                kb_config = kb.get('config', {})
+                                kb_tool_name = kb_config.get('tool_name', f"search_{kb.get('name', '').lower().replace(' ', '_')}")
+                                if function_name == kb_tool_name:
+                                    # This is a KB search function
+                                    skill_name = "builtin_knowledge_base"
+                                    skill_params = {
+                                        'knowledge_base_id': kb.get('id'),
+                                        'response_prefix': kb_config.get('response_prefix', ''),
+                                        'response_postfix': kb_config.get('response_postfix', ''),
+                                        'no_results_message': kb_config.get('no_results_message', f"No information found in {kb.get('name')} for '{{query}}'")
+                                    }
+                                    logger.info(f"Matched KB search function {function_name} to KB: {kb.get('name')} (ID: {kb.get('id')})")
+                                    kb_found = True
+                                    break
+                            
+                            if not kb_found:
+                                # Unknown function - default to general
+                                logger.warning(f"Function {function_name} not found in any mappings")
                         
                         # Create function-specific token
-                        token = create_skill_jwt_token(agent_id, skill_name or "general", skill_params)
-                        function['meta_data']['token'] = token
+                        # Use the actual skill name if found, not "general"
+                        token_skill_name = skill_name if skill_name else "general"
+                        logger.info(f"Creating token for function {function_name}: skill_name={token_skill_name}, params={list(skill_params.keys()) if skill_params else 'None'}")
+                        token = create_skill_jwt_token(agent_id, token_skill_name, skill_params)
+                        
+                        # Build clean meta_data with only what we need
+                        # For builtin functions, the token contains all needed info
+                        function['meta_data'] = {
+                            'token': token
+                        }
+                    
+                    # Ensure SWAIG defaults has the global webhook URL
+                    if 'SWAIG' in section['ai']:
+                        if 'defaults' not in section['ai']['SWAIG']:
+                            section['ai']['SWAIG']['defaults'] = {}
+                        section['ai']['SWAIG']['defaults']['web_hook_url'] = f"https://{settings.hostname}:{settings.port}/api/swaig/function"
         
         # Return the modified SWML document
         return swml_doc
@@ -682,29 +765,48 @@ def generate_swml_manual(agent_config: Dict[str, Any], agent_id: str) -> Dict[st
         if functions:
             swaig_config["functions"] = functions
     
-    # Add knowledge base function if enabled
-    if agent_config.get('knowledge_base', {}).get('enabled', False):
+    # Add knowledge base functions if agent has knowledge bases
+    knowledge_bases = agent_config.get('knowledge_bases', [])
+    if knowledge_bases:
         if "functions" not in swaig_config:
             swaig_config["functions"] = []
-        swaig_config["functions"].append({
-            "function": "search_knowledge_base",
-            "description": "Search the agent's knowledge base for relevant information",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "The search query"
+        
+        for i, kb in enumerate(knowledge_bases):
+            kb_id = kb.get('id')
+            kb_name = kb.get('name', f'Knowledge Base {i+1}')
+            kb_description = kb.get('description', '')
+            kb_config = kb.get('config', {})
+            
+            # Get tool configuration from agent-KB config or use defaults
+            tool_name = kb_config.get('tool_name', f'search_{kb_name.lower().replace(" ", "_")}')
+            tool_description = kb_config.get('tool_description', kb_description or f'Search {kb_name} for information')
+            default_count = kb_config.get('default_result_count', 3)
+            
+            swaig_config["functions"].append({
+                "function": tool_name,
+                "description": tool_description,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The search query"
+                        },
+                        "count": {
+                            "type": "integer",
+                            "description": "Number of results to return",
+                            "default": default_count
+                        }
                     },
-                    "count": {
-                        "type": "integer",
-                        "description": "Number of results to return",
-                        "default": 3
-                    }
+                    "required": ["query"]
                 },
-                "required": ["query"]
-            }
-        })
+                "meta_data": {
+                    "knowledge_base_id": kb_id,
+                    "response_prefix": kb_config.get('response_prefix', ''),
+                    "response_postfix": kb_config.get('response_postfix', ''),
+                    "no_results_message": kb_config.get('no_results_message', f"No information found in {kb_name} for '{{query}}'")
+                }
+            })
     
     ai_config["SWAIG"] = swaig_config
     

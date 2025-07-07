@@ -14,6 +14,14 @@ from ..models import KBDocument, KBChunk
 
 logger = logging.getLogger(__name__)
 
+# Try to import the SignalWire document processor for advanced chunking
+try:
+    from signalwire_agents.search.document_processor import DocumentProcessor as SWDocumentProcessor
+    ADVANCED_CHUNKING_AVAILABLE = True
+except ImportError:
+    ADVANCED_CHUNKING_AVAILABLE = False
+    logger.info("Advanced chunking strategies not available. Install signalwire-agents[search] for full support.")
+
 
 class DocumentProcessor:
     """Service for processing documents into searchable chunks."""
@@ -22,6 +30,13 @@ class DocumentProcessor:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.embedding_service = EmbeddingService()
+        
+        # Strategy-specific parameters
+        self.chunking_strategy = 'sentence'
+        self.max_sentences_per_chunk = 5
+        self.split_newlines = 0
+        self.semantic_threshold = 0.5
+        self.topic_threshold = 0.3
         
         # Initialize supported file loaders
         self._init_loaders()
@@ -248,7 +263,59 @@ class DocumentProcessor:
         return text
     
     def _split_into_chunks(self, text: str) -> List[Dict[str, Any]]:
-        """Split text into overlapping chunks."""
+        """Split text into chunks using the configured strategy."""
+        
+        # Try to use advanced chunking if available
+        if ADVANCED_CHUNKING_AVAILABLE and self.chunking_strategy != 'sliding':
+            try:
+                # Create SW document processor with our settings
+                sw_processor = SWDocumentProcessor(
+                    chunking_strategy=self.chunking_strategy,
+                    max_sentences_per_chunk=self.max_sentences_per_chunk,
+                    chunk_size=self.chunk_size,
+                    chunk_overlap=self.chunk_overlap,
+                    split_newlines=self.split_newlines if self.split_newlines > 0 else None,
+                    semantic_threshold=self.semantic_threshold,
+                    topic_threshold=self.topic_threshold,
+                    verbose=False
+                )
+                
+                # Process text and get chunks
+                sw_chunks = sw_processor.process_text(
+                    text,
+                    metadata={},
+                    source_file="document"
+                )
+                
+                # Convert to our format
+                chunks = []
+                for idx, sw_chunk in enumerate(sw_chunks):
+                    chunks.append({
+                        'content': sw_chunk['content'],
+                        'metadata': {
+                            'chunk_index': idx,
+                            'start_char': sw_chunk.get('metadata', {}).get('start_char', 0),
+                            **sw_chunk.get('metadata', {})
+                        }
+                    })
+                
+                return chunks
+                
+            except Exception as e:
+                logger.warning(f"Failed to use advanced chunking: {e}. Falling back to simple chunking.")
+        
+        # Fallback to simple chunking
+        if self.chunking_strategy == 'sentence' or self.chunking_strategy == 'sliding':
+            return self._simple_sentence_chunking(text)
+        elif self.chunking_strategy == 'paragraph':
+            return self._paragraph_chunking(text)
+        else:
+            # Default to simple sentence chunking for unsupported strategies
+            logger.warning(f"Chunking strategy '{self.chunking_strategy}' not supported without signalwire-agents[search]. Using sentence chunking.")
+            return self._simple_sentence_chunking(text)
+    
+    def _simple_sentence_chunking(self, text: str) -> List[Dict[str, Any]]:
+        """Simple sentence-based chunking (fallback)."""
         chunks = []
         
         # Simple sentence-based splitting
@@ -293,6 +360,54 @@ class DocumentProcessor:
         # Add final chunk
         if current_chunk:
             chunk_text = '. '.join(current_chunk) + '.'
+            chunks.append({
+                'content': chunk_text,
+                'metadata': {
+                    'chunk_index': len(chunks),
+                    'start_char': sum(len(c['content']) for c in chunks)
+                }
+            })
+        
+        return chunks
+    
+    def _paragraph_chunking(self, text: str) -> List[Dict[str, Any]]:
+        """Simple paragraph-based chunking."""
+        chunks = []
+        
+        # Split by double newlines (paragraphs)
+        paragraphs = text.split('\n\n')
+        
+        current_chunk = []
+        current_length = 0
+        
+        for para in paragraphs:
+            para = para.strip()
+            if not para:
+                continue
+            
+            para_length = len(para)
+            
+            # If adding this paragraph exceeds chunk size, save current chunk
+            if current_length + para_length > self.chunk_size and current_chunk:
+                chunk_text = '\n\n'.join(current_chunk)
+                chunks.append({
+                    'content': chunk_text,
+                    'metadata': {
+                        'chunk_index': len(chunks),
+                        'start_char': sum(len(c['content']) for c in chunks)
+                    }
+                })
+                
+                # No overlap for paragraph chunking
+                current_chunk = []
+                current_length = 0
+            
+            current_chunk.append(para)
+            current_length += para_length
+        
+        # Add final chunk
+        if current_chunk:
+            chunk_text = '\n\n'.join(current_chunk)
             chunks.append({
                 'content': chunk_text,
                 'metadata': {

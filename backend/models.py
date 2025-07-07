@@ -52,7 +52,7 @@ class Agent(Base):
     
     # Relationships
     call_summaries = relationship("CallSummary", back_populates="agent", cascade="all, delete-orphan")
-    kb_collection = relationship("KBCollection", uselist=False, cascade="all, delete-orphan")
+    knowledge_bases = relationship("AgentKnowledgeBase", back_populates="agent", cascade="all, delete-orphan")
 
 
 class Setting(Base):
@@ -137,18 +137,54 @@ class EnvVar(Base):
         }
 
 
+class KnowledgeBase(Base):
+    """Standalone knowledge base that can be shared across agents."""
+    
+    __tablename__ = "knowledge_bases"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(255), unique=True, nullable=False)
+    description = Column(Text)
+    created_by = Column(String)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now())
+    settings = Column(JSON, default={})
+    stats = Column(JSON, default={})
+    
+    # Relationships
+    agents = relationship("AgentKnowledgeBase", back_populates="knowledge_base")
+    collections = relationship("KBCollection", back_populates="knowledge_base", cascade="all, delete-orphan")
+
+
+class AgentKnowledgeBase(Base):
+    """Many-to-many relationship between agents and knowledge bases."""
+    
+    __tablename__ = "agent_knowledge_bases"
+    
+    agent_id = Column(UUID(as_uuid=True), ForeignKey("agents.id", ondelete="CASCADE"), primary_key=True)
+    knowledge_base_id = Column(UUID(as_uuid=True), ForeignKey("knowledge_bases.id", ondelete="CASCADE"), primary_key=True)
+    attached_at = Column(DateTime(timezone=True), server_default=func.now())
+    attached_by = Column(String)
+    config = Column(JSON, default={})
+    
+    # Relationships
+    agent = relationship("Agent", back_populates="knowledge_bases")
+    knowledge_base = relationship("KnowledgeBase", back_populates="agents")
+
+
 class KBCollection(Base):
-    """Knowledge base collection - one per agent."""
+    """Knowledge base collection - container for documents."""
     
     __tablename__ = "kb_collections"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    agent_id = Column(UUID(as_uuid=True), ForeignKey("agents.id", ondelete="CASCADE"), nullable=False)
-    name = Column(String(255), unique=True, nullable=False)
+    knowledge_base_id = Column(UUID(as_uuid=True), ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=True)
+    name = Column(String(255), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     settings = Column(JSON, default={})
     
     # Relationships
+    knowledge_base = relationship("KnowledgeBase", back_populates="collections")
     documents = relationship("KBDocument", back_populates="collection", cascade="all, delete-orphan")
 
 
