@@ -50,3 +50,4 @@ htmlcov/
 .cache/
 signalwire-agents/
 untracked/
+certs/*
