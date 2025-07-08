@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
     nginx \
     supervisor \
     libmagic1 \
+    openssl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js from NodeSource
@@ -69,7 +70,19 @@ COPY scripts/ ./scripts/
 # Layer 6: Configuration files
 COPY docker/nginx.conf /etc/nginx/sites-available/default
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Handle SSL certificates - copy if exists, create self-signed if not
 COPY certs/ /certs/
+RUN if [ ! -f "/certs/server.pem" ]; then \
+        echo "No SSL certificate found, generating self-signed certificate..." && \
+        openssl req -x509 -newkey rsa:4096 -keyout /certs/server.pem -out /tmp/cert.crt -days 365 -nodes \
+            -subj "/C=US/ST=State/L=City/O=SignalWire Agent Builder/CN=localhost" && \
+        cat /tmp/cert.crt >> /certs/server.pem && \
+        rm /tmp/cert.crt && \
+        echo "Self-signed certificate created at /certs/server.pem"; \
+    else \
+        echo "Using provided SSL certificate..."; \
+    fi
 
 # Create necessary directories
 RUN mkdir -p /var/log/supervisor /var/log/nginx /app/logs /app/data/knowledge_base /app/data/media/audio /app/data/media/video
