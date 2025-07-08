@@ -3,19 +3,23 @@
 
 echo "🔨 Rebuilding SignalWire Agent Builder containers..."
 
+# Generate build version based on current timestamp
+BUILD_VERSION=$(date +%s)
+echo "🏷️  Build version: $BUILD_VERSION"
+
 # If local SDK exists, use timestamp-based cache busting
 if [ -d "signalwire-agents" ]; then
     SDK_MTIME=$(find signalwire-agents -name "*.py" -type f -exec stat -c '%Y' {} \; | sort -n | tail -1)
     echo "🔍 SDK latest change timestamp: $SDK_MTIME"
-    docker-compose build --build-arg SDK_CACHE_BUST=$SDK_MTIME app
+    BUILD_VERSION=$BUILD_VERSION docker-compose build --build-arg SDK_CACHE_BUST=$SDK_MTIME app
     if [ $? -eq 0 ] ; then
-	docker-compose up -d
+	BUILD_VERSION=$BUILD_VERSION docker-compose up -d
     else
 	echo "ERROR: The build did not work.";
 	exit -1;
     fi
 else
-    docker-compose up --build -d
+    BUILD_VERSION=$BUILD_VERSION docker-compose up --build -d
 fi
 
 if [ $? -ne 0 ] ; then

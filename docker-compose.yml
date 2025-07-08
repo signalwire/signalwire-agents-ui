@@ -36,6 +36,7 @@ services:
       RATE_LIMIT_API: ${RATE_LIMIT_API:-100}
       RATE_LIMIT_SWML: ${RATE_LIMIT_SWML:-1000}
       SIGNALWIRE_JWT_SECRET: ${SIGNALWIRE_JWT_SECRET:-change-this-for-production}
+      BUILD_VERSION: ${BUILD_VERSION:-dev}
     volumes:
       - app_logs:/app/logs
       - kb_storage:/app/data/knowledge_base

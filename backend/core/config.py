@@ -8,6 +8,12 @@ from pydantic import Field
 class Settings(BaseSettings):
     """Application settings with environment variable support."""
     
+    # Build version
+    build_version: str = Field(
+        default=os.getenv("BUILD_VERSION", "dev"),
+        description="Build version or commit hash"
+    )
+    
     # Database
     database_url: str = Field(
         default="postgresql://agent_builder:changeme@localhost:5432/agent_builder",

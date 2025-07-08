@@ -95,7 +95,11 @@ app.include_router(media.router, prefix="/api")  # Media library endpoints
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "service": "agent-builder-api"}
+    return {
+        "status": "healthy", 
+        "service": "agent-builder-api",
+        "build_version": settings.build_version
+    }
 
 
 # Root endpoint

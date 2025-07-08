@@ -4,8 +4,10 @@ import { apiClient } from '@/api/client'
 interface BackendContextType {
   isConnected: boolean
   isReady: boolean
+  buildVersion: string | null
   setConnected: (connected: boolean) => void
   setReady: (ready: boolean) => void
+  setBuildVersion: (version: string) => void
   checkBackendHealth: () => Promise<boolean>
 }
 
@@ -26,6 +28,7 @@ interface BackendProviderProps {
 export function BackendProvider({ children }: BackendProviderProps) {
   const [isConnected, setIsConnected] = useState(true)
   const [isReady, setIsReady] = useState(true)
+  const [buildVersion, setBuildVersion] = useState<string | null>(null)
   const [healthCheckInterval, setHealthCheckInterval] = useState<ReturnType<typeof setInterval> | null>(null)
 
   const setConnected = (connected: boolean) => {
@@ -46,6 +49,11 @@ export function BackendProvider({ children }: BackendProviderProps) {
       const healthResponse = await apiClient.get('/health')
       if (healthResponse.data?.status !== 'healthy') {
         return false
+      }
+      
+      // Store build version if available
+      if (healthResponse.data?.build_version) {
+        setBuildVersion(healthResponse.data.build_version)
       }
       
       // Then verify we can actually fetch data
@@ -96,8 +104,10 @@ export function BackendProvider({ children }: BackendProviderProps) {
     <BackendContext.Provider value={{
       isConnected,
       isReady,
+      buildVersion,
       setConnected,
       setReady,
+      setBuildVersion,
       checkBackendHealth
     }}>
       {children}

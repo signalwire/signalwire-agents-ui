@@ -24,7 +24,7 @@ export function useAgentChanges() {
   const [recentChanges, setRecentChanges] = useState<AgentChange[]>([]);
   const eventSourceRef = useRef<EventSource | null>(null);
   const { toast } = useToast();
-  const { setConnected } = useBackend();
+  const { setConnected, buildVersion, setBuildVersion } = useBackend();
   
   const connect = useCallback(() => {
     // Clean up existing connection
@@ -38,8 +38,25 @@ export function useAgentChanges() {
     });
     
     eventSource.addEventListener('connected', (event) => {
-      console.log('SSE Connected:', JSON.parse(event.data));
+      const data = JSON.parse(event.data);
+      console.log('SSE Connected:', data);
       setConnected(true);
+      
+      // Check if build version changed
+      if (data.build_version && buildVersion && data.build_version !== buildVersion) {
+        // Backend has been updated, reload the page
+        toast({
+          title: "Update Available",
+          description: "New version detected. Reloading...",
+          duration: 2000,
+        });
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else if (data.build_version) {
+        // Store the build version if we don't have one yet
+        setBuildVersion(data.build_version);
+      }
     });
     
     eventSource.addEventListener('agent-changes', (event) => {
@@ -75,7 +92,7 @@ export function useAgentChanges() {
     });
     
     eventSourceRef.current = eventSource;
-  }, [toast, setConnected]);
+  }, [toast, setConnected, buildVersion, setBuildVersion]);
   
   useEffect(() => {
     connect();

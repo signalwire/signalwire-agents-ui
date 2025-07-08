@@ -9,6 +9,7 @@ from sqlalchemy import text
 from sse_starlette.sse import EventSourceResponse
 
 from ..core.database import get_db
+from ..core.config import settings
 from ..auth import get_current_user_optional
 from ..models import User
 
@@ -98,12 +99,13 @@ async def changes_stream(
     
     async def event_generator():
         try:
-            # Send initial connection event
+            # Send initial connection event with build version
             yield {
                 "event": "connected",
                 "data": json.dumps({
                     "connection_id": connection_id,
-                    "user_id": current_user.id if current_user else None
+                    "user_id": current_user.id if current_user else None,
+                    "build_version": settings.build_version
                 })
             }
             
