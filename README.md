@@ -150,6 +150,7 @@ signalwire-agents-ui/
 │   └── public/         # Static assets
 ├── docker/              # Docker configuration
 ├── scripts/             # Utility scripts
+├── tools/               # Development tools
 └── signalwire-agents/   # SignalWire SDK (submodule)
 ```
 
@@ -232,6 +233,22 @@ Test specific components:
 ./test-api.sh summaries
 ./test-api.sh media
 ```
+
+### Interactive API Testing
+
+Use the included API testing tool for interactive exploration:
+```bash
+# Run interactive menu
+python3 tools/api_tool.py
+
+# Direct commands
+python3 tools/api_tool.py agents    # List agents
+python3 tools/api_tool.py media     # List media files
+python3 tools/api_tool.py kb        # List knowledge bases
+python3 tools/api_tool.py system    # Get system info
+```
+
+See `tools/api_tool_usage.md` for detailed documentation.
 
 ## Database Management
 
