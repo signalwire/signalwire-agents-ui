@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Upload, Music, Video, Search, Trash2, Download, MoreVertical, Link, Play, Pause } from 'lucide-react'
+import { Upload, Music, Video, Search, Trash2, Download, MoreVertical, Link, Play, Pause, X } from 'lucide-react'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -44,6 +44,10 @@ export function MediaLibraryPage() {
   const [description, setDescription] = useState('')
   const [uploading, setUploading] = useState(false)
   const [playingMedia, setPlayingMedia] = useState<string | null>(null)
+  const [floatingPlayerMedia, setFloatingPlayerMedia] = useState<MediaFile | null>(null)
+  const [playerPosition, setPlayerPosition] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [isMobile, setIsMobile] = useState(false)
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -222,12 +226,97 @@ export function MediaLibraryPage() {
   }
 
   const togglePlay = (mediaId: string) => {
-    if (playingMedia === mediaId) {
-      setPlayingMedia(null)
+    if (isMobile) {
+      // On mobile, use the existing inline player behavior
+      if (playingMedia === mediaId) {
+        setPlayingMedia(null)
+      } else {
+        setPlayingMedia(mediaId)
+      }
     } else {
-      setPlayingMedia(mediaId)
+      // On desktop, use floating player
+      if (floatingPlayerMedia?.id === mediaId) {
+        setFloatingPlayerMedia(null)
+      } else {
+        const file = data?.files?.find((f: MediaFile) => f.id === mediaId)
+        if (file) {
+          setFloatingPlayerMedia(file)
+        }
+      }
     }
   }
+
+  // Initialize player position to center when media changes
+  useEffect(() => {
+    if (floatingPlayerMedia) {
+      const windowWidth = window.innerWidth
+      const windowHeight = window.innerHeight
+      const playerWidth = 400
+      const playerHeight = 400 // Approximate height
+      
+      setPlayerPosition({
+        x: (windowWidth - playerWidth) / 2,
+        y: (windowHeight - playerHeight) / 2
+      })
+    }
+  }, [floatingPlayerMedia])
+
+  // Handle dragging
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Only start drag from the header area
+    if ((e.target as HTMLElement).closest('.player-header')) {
+      setIsDragging(true)
+      setDragStart({
+        x: e.clientX - playerPosition.x,
+        y: e.clientY - playerPosition.y
+      })
+    }
+  }
+
+  useEffect(() => {
+    if (!isDragging) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newX = e.clientX - dragStart.x
+      const newY = e.clientY - dragStart.y
+      
+      // Keep player within viewport bounds
+      const maxX = window.innerWidth - 400
+      const maxY = window.innerHeight - 200
+      
+      setPlayerPosition({
+        x: Math.max(0, Math.min(newX, maxX)),
+        y: Math.max(0, Math.min(newY, maxY))
+      })
+    }
+
+    const handleMouseUp = () => {
+      setIsDragging(false)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDragging, dragStart])
+
+  // Close floating player when clicking outside
+  useEffect(() => {
+    if (!floatingPlayerMedia || isDragging) return
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const player = document.getElementById('floating-media-player')
+      if (player && !player.contains(e.target as Node)) {
+        setFloatingPlayerMedia(null)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [floatingPlayerMedia, isDragging])
 
   return (
     <MainLayout>
@@ -324,7 +413,7 @@ export function MediaLibraryPage() {
                           className="h-12 w-12"
                           onClick={() => togglePlay(file.id)}
                         >
-                          {playingMedia === file.id ? (
+                          {floatingPlayerMedia?.id === file.id ? (
                             <Pause className="h-6 w-6" />
                           ) : (
                             <Play className="h-6 w-6" />
@@ -373,33 +462,6 @@ export function MediaLibraryPage() {
                         <p className="text-sm text-muted-foreground mt-2 line-clamp-2" title={file.description}>
                           {file.description}
                         </p>
-                      )}
-                      
-                      {/* Media player */}
-                      {playingMedia === file.id && !isMobile && (
-                        <div className="mt-3 pt-3 border-t">
-                          {file.file_type === 'audio' ? (
-                            <audio
-                              controls
-                              autoPlay
-                              className="w-full"
-                              onEnded={() => setPlayingMedia(null)}
-                            >
-                              <source src={file.url} type={file.mime_type} />
-                              Your browser does not support the audio element.
-                            </audio>
-                          ) : (
-                            <video
-                              controls
-                              autoPlay
-                              className="w-full rounded"
-                              onEnded={() => setPlayingMedia(null)}
-                            >
-                              <source src={file.url} type={file.mime_type} />
-                              Your browser does not support the video element.
-                            </video>
-                          )}
-                        </div>
                       )}
                     </CardContent>
                   </Card>
@@ -581,6 +643,68 @@ export function MediaLibraryPage() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Floating Media Player (Desktop only) */}
+        {floatingPlayerMedia && !isMobile && (
+          <div
+            id="floating-media-player"
+            className="fixed z-50 bg-background border rounded-lg shadow-lg"
+            style={{ 
+              width: '400px', 
+              maxWidth: 'calc(100vw - 48px)',
+              left: `${playerPosition.x}px`,
+              top: `${playerPosition.y}px`,
+              cursor: isDragging ? 'grabbing' : 'default'
+            }}
+            onMouseDown={handleMouseDown}
+          >
+            <div className="p-4">
+              <div className="player-header flex items-start justify-between mb-3" style={{ cursor: 'grab' }}>
+                <div className="flex-1 min-w-0 mr-3 select-none">
+                  <h3 className="font-medium truncate" title={floatingPlayerMedia.original_filename}>
+                    {floatingPlayerMedia.original_filename}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {floatingPlayerMedia.file_type === 'audio' ? 'Audio' : 'Video'} • {formatBytes(floatingPlayerMedia.file_size)}
+                    {formatDuration(floatingPlayerMedia.duration_seconds) && ` • ${formatDuration(floatingPlayerMedia.duration_seconds)}`}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={() => setFloatingPlayerMedia(null)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              {/* Media player */}
+              {floatingPlayerMedia.file_type === 'audio' ? (
+                <audio
+                  controls
+                  autoPlay
+                  className="w-full"
+                  onEnded={() => setFloatingPlayerMedia(null)}
+                >
+                  <source src={floatingPlayerMedia.url} type={floatingPlayerMedia.mime_type} />
+                  Your browser does not support the audio element.
+                </audio>
+              ) : (
+                <video
+                  controls
+                  autoPlay
+                  className="w-full rounded"
+                  style={{ maxHeight: '300px' }}
+                  onEnded={() => setFloatingPlayerMedia(null)}
+                >
+                  <source src={floatingPlayerMedia.url} type={floatingPlayerMedia.mime_type} />
+                  Your browser does not support the video element.
+                </video>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </MainLayout>
   )
