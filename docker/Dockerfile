@@ -42,7 +42,7 @@ RUN if [ -d "./signalwire-agents" ]; then \
         python3.11 -m pip install --no-cache-dir signalwire-pom==2.7.1; \
     else \
         echo "Installing signalwire-agents from pip with search-all..." && \
-        python3.11 -m pip install --no-cache-dir "signalwire-agents[search-all]>=1.0.0"; \
+        python3.11 -m pip install --no-cache-dir "signalwire-agents[search-all]"; \
     fi
 
 # Download spaCy language model for NLP features
