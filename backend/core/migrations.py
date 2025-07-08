@@ -47,8 +47,44 @@ async def run_migrations(db: AsyncSession):
                 sql_content = f.read()
             
             # Execute the migration
-            # Split by semicolon and execute each statement
-            statements = [s.strip() for s in sql_content.split(';') if s.strip()]
+            # Handle dollar-quoted strings properly
+            statements = []
+            current_statement = ""
+            in_dollar_quote = False
+            dollar_tag = None
+            
+            lines = sql_content.split('\n')
+            for line in lines:
+                line = line.strip()
+                if not line or line.startswith('--'):
+                    continue
+                    
+                # Check for dollar-quoted strings
+                if not in_dollar_quote and '$$' in line:
+                    # Starting a dollar-quoted string
+                    dollar_parts = line.split('$$')
+                    if len(dollar_parts) >= 2:
+                        in_dollar_quote = True
+                        dollar_tag = dollar_parts[0] + '$$'
+                        current_statement += line + '\n'
+                        continue
+                elif in_dollar_quote and line.endswith('$$'):
+                    # Ending a dollar-quoted string
+                    current_statement += line + '\n'
+                    in_dollar_quote = False
+                    dollar_tag = None
+                    continue
+                
+                current_statement += line + '\n'
+                
+                # If not in a dollar-quoted string and line ends with semicolon, it's a complete statement
+                if not in_dollar_quote and line.endswith(';'):
+                    statements.append(current_statement.strip())
+                    current_statement = ""
+            
+            # Add any remaining statement
+            if current_statement.strip():
+                statements.append(current_statement.strip())
             
             for statement in statements:
                 if statement:
