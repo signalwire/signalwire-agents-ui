@@ -127,13 +127,13 @@ export default function CallSummariesList({
                     <Clock className="h-3 w-3" />
                     <span className="font-medium">{formatDuration(summary.total_minutes)}</span>
                   </div>
-                  {summary.total_input_tokens && (
+                  {summary.total_input_tokens !== undefined && summary.total_input_tokens !== null && (
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <Hash className="h-3 w-3" />
                       <span>{summary.total_input_tokens.toLocaleString()} in</span>
                     </div>
                   )}
-                  {summary.total_output_tokens && (
+                  {summary.total_output_tokens !== undefined && summary.total_output_tokens !== null && (
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <FileText className="h-3 w-3" />
                       <span>{summary.total_output_tokens.toLocaleString()} out</span>

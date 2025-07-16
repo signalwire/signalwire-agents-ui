@@ -1,10 +1,16 @@
 import { apiClient } from './client'
 
 export interface AgentConfig {
+  agent_type?: 'regular' | 'bedrock'
   voice: string
   language: string
   engine?: string
   model?: string
+  // Bedrock-specific parameters
+  voice_id?: string
+  temperature?: number
+  top_p?: number
+  max_tokens?: number
   // New multi-language support
   languages?: Array<{
     id?: string
@@ -91,6 +97,7 @@ export interface Agent {
   updated_at: string
   updated_by?: string
   version?: number
+  agent_type?: 'regular' | 'bedrock'
   knowledge_bases?: Array<{
     id: string
     name: string

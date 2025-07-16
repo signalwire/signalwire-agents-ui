@@ -130,6 +130,129 @@ export const ELEVENLABS_VOICE_MAP: Record<string, { id: string; name: string }> 
 // Generate language presets
 export const LANGUAGE_PRESETS: LanguagePreset[] = [
   // English variants with multiple engines
+  // Amazon voices first
+  {
+    id: "en-us-amazon-neural",
+    displayName: "English (US) - Amazon Neural",
+    properName: "English",
+    code: "en-US",
+    engine: "amazon",
+    model: "neural",
+    voice: "amazon.neural.Joanna",
+    voiceDisplayName: "Joanna",
+    suggestedVoices: ["Joanna", "Matthew", "Salli", "Kimberly", "Kendra", "Justin", "Joey", "Ivy"]
+  },
+  {
+    id: "en-us-amazon-generative",
+    displayName: "English (US) - Amazon Generative",
+    properName: "English",
+    code: "en-US",
+    engine: "amazon",
+    model: "generative",
+    voice: "amazon.generative.Matthew",
+    voiceDisplayName: "Matthew",
+    suggestedVoices: ["Matthew", "Ruth", "Danielle", "Joanna", "Stephen"]
+  },
+  {
+    id: "en-gb-amazon-neural",
+    displayName: "English (UK) - Amazon Neural",
+    properName: "English",
+    code: "en-GB",
+    engine: "amazon",
+    model: "neural",
+    voice: "amazon.neural.Amy",
+    voiceDisplayName: "Amy",
+    suggestedVoices: ["Amy", "Emma", "Brian", "Arthur"]
+  },
+  {
+    id: "es-es-amazon-neural",
+    displayName: "Spanish (Spain) - Amazon Neural",
+    properName: "Spanish",
+    code: "es-ES",
+    engine: "amazon",
+    model: "neural",
+    voice: "amazon.neural.Lucia",
+    voiceDisplayName: "Lucia",
+    suggestedVoices: ["Lucia", "Sergio"]
+  },
+  {
+    id: "es-mx-amazon-neural",
+    displayName: "Spanish (Mexico) - Amazon Neural",
+    properName: "Spanish",
+    code: "es-MX",
+    engine: "amazon",
+    model: "neural",
+    voice: "amazon.neural.Mia",
+    voiceDisplayName: "Mia",
+    suggestedVoices: ["Mia", "Andres"]
+  },
+  {
+    id: "fr-fr-amazon-neural",
+    displayName: "French (France) - Amazon Neural",
+    properName: "French",
+    code: "fr-FR",
+    engine: "amazon",
+    model: "neural",
+    voice: "amazon.neural.Lea",
+    voiceDisplayName: "Léa",
+    suggestedVoices: ["Lea", "Remi"]
+  },
+  {
+    id: "de-de-amazon-neural",
+    displayName: "German - Amazon Neural",
+    properName: "German",
+    code: "de-DE",
+    engine: "amazon",
+    model: "neural",
+    voice: "amazon.neural.Vicki",
+    voiceDisplayName: "Vicki",
+    suggestedVoices: ["Vicki", "Daniel"]
+  },
+  {
+    id: "it-it-amazon-neural",
+    displayName: "Italian - Amazon Neural",
+    properName: "Italian",
+    code: "it-IT",
+    engine: "amazon",
+    model: "neural",
+    voice: "amazon.neural.Bianca",
+    voiceDisplayName: "Bianca",
+    suggestedVoices: ["Bianca", "Adriano"]
+  },
+  {
+    id: "pt-br-amazon-neural",
+    displayName: "Portuguese (Brazil) - Amazon Neural",
+    properName: "Portuguese",
+    code: "pt-BR",
+    engine: "amazon",
+    model: "neural",
+    voice: "amazon.neural.Camila",
+    voiceDisplayName: "Camila",
+    suggestedVoices: ["Camila", "Vitoria", "Thiago"]
+  },
+  {
+    id: "ja-jp-amazon-neural",
+    displayName: "Japanese - Amazon Neural",
+    properName: "Japanese",
+    code: "ja-JP",
+    engine: "amazon",
+    model: "neural",
+    voice: "amazon.neural.Kazuha",
+    voiceDisplayName: "Kazuha",
+    suggestedVoices: ["Kazuha", "Tomoko", "Takumi"]
+  },
+  {
+    id: "ko-kr-amazon-neural",
+    displayName: "Korean - Amazon Neural",
+    properName: "Korean",
+    code: "ko-KR",
+    engine: "amazon",
+    model: "neural",
+    voice: "amazon.neural.Seoyeon",
+    voiceDisplayName: "Seoyeon",
+    suggestedVoices: ["Seoyeon", "Jihye"]
+  },
+  // Rime voices
   {
     id: "en-us-rime-mist",
     displayName: "English (US) - Rime",

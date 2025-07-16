@@ -34,6 +34,9 @@ import { HelpTooltip } from '@/components/ui/help-tooltip'
 import { helpContent } from '@/lib/helpContent'
 import { LLMParamsCard } from '@/components/agents/LLMParamsCard'
 import { LanguagesConfig } from '@/components/agents/config/LanguagesConfig'
+import { AgentTypeSelector } from '@/components/agents/AgentTypeSelector'
+import { BedrockVoiceSelector } from '@/components/agents/BedrockVoiceSelector'
+import { BedrockParamsDialog } from '@/components/agents/BedrockParamsDialog'
 
 interface LanguageConfig {
   id: string
@@ -57,10 +60,14 @@ export function AgentBuilderPage() {
   const copyId = searchParams.get('copy')
   const isEditMode = !!id
 
+  const [agentType, setAgentType] = useState<'regular' | 'bedrock'>('regular')
   const [promptSections, setPromptSections] = useState<AgentConfig['prompt_sections']>([])
   const [skills, setSkills] = useState<AgentConfig['skills']>([])
   const [params, setParams] = useState<AgentConfig['params']>({})
   const [basicAuth, setBasicAuth] = useState<{ user?: string; password?: string }>({})
+  
+  // Bedrock-specific parameters
+  const [bedrockVoiceId, setBedrockVoiceId] = useState<string>('tiffany')
   
   // New configuration states
   const [hintsConfig, setHintsConfig] = useState<{ simple_hints: string[], pattern_hints: any[] }>({
@@ -174,6 +181,14 @@ export function AgentBuilderPage() {
       // Reset form values
       setValue('name', agent.name)
       setValue('description', agent.description || '')
+      
+      // Reset agent type
+      setAgentType(agent.agent_type || agent.config.agent_type || 'regular')
+      
+      // Reset Bedrock-specific parameters if it's a Bedrock agent
+      if (agent.agent_type === 'bedrock' || agent.config.agent_type === 'bedrock') {
+        setBedrockVoiceId(agent.config.voice_id || 'tiffany')
+      }
       
       // Reset languages from agent config
       if (agent.config.languages && Array.isArray(agent.config.languages)) {
@@ -336,6 +351,14 @@ export function AgentBuilderPage() {
       setValue('name', copyId ? `Copy of ${agent.name}` : agent.name)
       setValue('description', agent.description || '')
 
+      // Load agent type
+      setAgentType(agent.agent_type || agent.config.agent_type || 'regular')
+      
+      // Load Bedrock-specific parameters if it's a Bedrock agent
+      if (agent.agent_type === 'bedrock' || agent.config.agent_type === 'bedrock') {
+        setBedrockVoiceId(agent.config.voice_id || 'tiffany')
+      }
+
       setPromptSections(agent.config.prompt_sections)
       setSkills(agent.config.skills)
       setParams(agent.config.params)
@@ -483,13 +506,20 @@ export function AgentBuilderPage() {
       }
 
       const config: AgentConfig = {
-        // Legacy single language fields for backward compatibility
-        voice: firstLanguage.voice,
-        language: firstLanguage.code,
-        engine: firstLanguage.engine,
-        model: firstLanguage.model,
-        // New multi-language support
-        languages: languages,
+        agent_type: agentType,
+        // Always include voice and language for backward compatibility
+        voice: agentType === 'bedrock' ? bedrockVoiceId : firstLanguage.voice,
+        language: agentType === 'bedrock' ? 'en-US' : firstLanguage.code,
+        engine: agentType === 'bedrock' ? 'bedrock' : firstLanguage.engine,
+        model: agentType === 'bedrock' ? undefined : firstLanguage.model,
+        // For Bedrock agents, include Bedrock-specific parameters
+        ...(agentType === 'bedrock' ? {
+          voice_id: bedrockVoiceId,
+        } : {
+          // Regular agent parameters
+          // New multi-language support
+          languages: languages,
+        }),
         prompt_sections: promptSections,
         skills: skills,
         params: params,
@@ -619,13 +649,20 @@ export function AgentBuilderPage() {
       }
 
       const config: AgentConfig = {
-        // Legacy single language fields for backward compatibility
-        voice: firstLanguage.voice,
-        language: firstLanguage.code,
-        engine: firstLanguage.engine,
-        model: firstLanguage.model,
-        // New multi-language support
-        languages: languages,
+        agent_type: agentType,
+        // Always include voice and language for backward compatibility
+        voice: agentType === 'bedrock' ? bedrockVoiceId : firstLanguage.voice,
+        language: agentType === 'bedrock' ? 'en-US' : firstLanguage.code,
+        engine: agentType === 'bedrock' ? 'bedrock' : firstLanguage.engine,
+        model: agentType === 'bedrock' ? undefined : firstLanguage.model,
+        // For Bedrock agents, include Bedrock-specific parameters
+        ...(agentType === 'bedrock' ? {
+          voice_id: bedrockVoiceId,
+        } : {
+          // Regular agent parameters
+          // New multi-language support
+          languages: languages,
+        }),
         prompt_sections: promptSections,
         skills: skills,
         params: params,
@@ -796,12 +833,41 @@ export function AgentBuilderPage() {
           </CardContent>
         </Card>
 
-        {/* Languages Configuration */}
-        <LanguagesConfig
-          languages={languages}
-          onChange={setLanguagesWithTracking}
-          languageConfigs={languageConfigs}
-        />
+        {/* Agent Type Selection - Only show for new agents */}
+        {!isEditMode && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-heading-secondary">Agent Type</CardTitle>
+              <CardDescription>
+                Choose the type of AI agent to create
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AgentTypeSelector
+                value={agentType}
+                onChange={(value) => setAgentType(value as 'regular' | 'bedrock')}
+                disabled={false}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Languages Configuration - Only for regular agents */}
+        {agentType === 'regular' && (
+          <LanguagesConfig
+            languages={languages}
+            onChange={setLanguagesWithTracking}
+            languageConfigs={languageConfigs}
+          />
+        )}
+
+        {/* Bedrock Voice Selection - Only for Bedrock agents */}
+        {agentType === 'bedrock' && (
+          <BedrockVoiceSelector
+            value={bedrockVoiceId}
+            onChange={setBedrockVoiceId}
+          />
+        )}
 
         {/* Agent Instructions - Full width card */}
         <Card 
@@ -876,26 +942,28 @@ export function AgentBuilderPage() {
             </CardContent>
           </Card>
 
-          {/* LLM Parameters */}
-          <Card 
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => setShowLLMParams(true)}
-          >
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between text-heading-card">
-                LLM Parameters
-                <Brain className="h-4 w-4" />
-              </CardTitle>
-              <CardDescription>
-                Fine-tune model behavior
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Click to adjust temperature, penalties, and other LLM settings
-              </p>
-            </CardContent>
-          </Card>
+          {/* LLM Parameters - Only for regular agents */}
+          {agentType === 'regular' && (
+            <Card 
+              className="cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => setShowLLMParams(true)}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between text-heading-card">
+                  LLM Parameters
+                  <Brain className="h-4 w-4" />
+                </CardTitle>
+                <CardDescription>
+                  Fine-tune model behavior
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Click to adjust temperature, penalties, and other LLM settings
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Basic Auth */}
           <Card 
@@ -918,47 +986,51 @@ export function AgentBuilderPage() {
             </CardContent>
           </Card>
 
-          {/* Hints */}
-          <Card 
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => setShowHintsConfig(true)}
-          >
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between text-heading-card">
-                Hints
-                <Hash className="h-4 w-4" />
-              </CardTitle>
-              <CardDescription>
-                {hintsConfig.simple_hints.length + hintsConfig.pattern_hints.length} hints configured
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Click to help AI understand specific terms and patterns
-              </p>
-            </CardContent>
-          </Card>
+          {/* Hints - Only for regular agents */}
+          {agentType === 'regular' && (
+            <Card 
+              className="cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => setShowHintsConfig(true)}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between text-heading-card">
+                  Hints
+                  <Hash className="h-4 w-4" />
+                </CardTitle>
+                <CardDescription>
+                  {hintsConfig.simple_hints.length + hintsConfig.pattern_hints.length} hints configured
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Click to help AI understand specific terms and patterns
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Pronunciations */}
-          <Card 
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => setShowPronunciationsConfig(true)}
-          >
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between text-heading-card">
-                Pronunciations
-                <Mic className="h-4 w-4" />
-              </CardTitle>
-              <CardDescription>
-                {pronunciations.length} custom pronunciations
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Click to configure how AI pronounces specific words
-              </p>
-            </CardContent>
-          </Card>
+          {/* Pronunciations - Only for regular agents */}
+          {agentType === 'regular' && (
+            <Card 
+              className="cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => setShowPronunciationsConfig(true)}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between text-heading-card">
+                  Pronunciations
+                  <Mic className="h-4 w-4" />
+                </CardTitle>
+                <CardDescription>
+                  {pronunciations.length} custom pronunciations
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Click to configure how AI pronounces specific words
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Global Data */}
           <Card 
@@ -1044,26 +1116,28 @@ export function AgentBuilderPage() {
             </CardContent>
           </Card>
 
-          {/* Contexts & Steps */}
-          <Card 
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => setShowContextsStepsConfig(true)}
-          >
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between text-heading-card">
-                Contexts & Steps
-                <Network className="h-4 w-4" />
-              </CardTitle>
-              <CardDescription>
-                {contextsStepsConfig.contexts.length} contexts configured
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Click to build structured conversation flows
-              </p>
-            </CardContent>
-          </Card>
+          {/* Contexts & Steps - Only for regular agents */}
+          {agentType !== 'bedrock' && (
+            <Card 
+              className="cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => setShowContextsStepsConfig(true)}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between text-heading-card">
+                  Contexts & Steps
+                  <Network className="h-4 w-4" />
+                </CardTitle>
+                <CardDescription>
+                  {contextsStepsConfig.contexts.length} contexts configured
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Click to build structured conversation flows
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Knowledge Base */}
           <Card 
@@ -1104,12 +1178,21 @@ export function AgentBuilderPage() {
           onChange={setSkillsWithTracking}
         />
 
-        <ParamsEditor
-          open={showParamsEditor}
-          onClose={() => setShowParamsEditor(false)}
-          params={params}
-          onChange={setParamsWithTracking}
-        />
+        {agentType === 'bedrock' ? (
+          <BedrockParamsDialog
+            open={showParamsEditor}
+            onClose={() => setShowParamsEditor(false)}
+            params={params}
+            onChange={setParamsWithTracking}
+          />
+        ) : (
+          <ParamsEditor
+            open={showParamsEditor}
+            onClose={() => setShowParamsEditor(false)}
+            params={params}
+            onChange={setParamsWithTracking}
+          />
+        )}
 
         <BasicAuthConfig
           open={showBasicAuth}

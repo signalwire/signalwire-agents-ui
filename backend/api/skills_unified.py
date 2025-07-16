@@ -363,13 +363,13 @@ async def toggle_skill(
     """Toggle skill enabled/disabled state"""
     
     # TODO: Implement per-user skill enable/disable state
-    # For now, just return success
+    # For now, this is not implemented
+    logger.warning(f"Skill toggle requested for '{skill_name}' but feature not implemented")
     
-    return {
-        "status": "success",
-        "enabled": request.enabled,
-        "message": f"Skill '{skill_name}' {'enabled' if request.enabled else 'disabled'}"
-    }
+    raise HTTPException(
+        status_code=501,
+        detail="Skill enable/disable feature is not yet implemented. Skills are always available when installed."
+    )
 
 
 @router.post("/upload")

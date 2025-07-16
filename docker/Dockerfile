@@ -66,6 +66,7 @@ RUN npm run build
 WORKDIR /app
 COPY backend/ ./backend/
 COPY scripts/ ./scripts/
+COPY polly_voices.json ./backend/
 
 # Layer 6: Configuration files
 COPY docker/nginx.conf /etc/nginx/sites-available/default
@@ -90,8 +91,15 @@ RUN mkdir -p /var/log/supervisor /var/log/nginx /app/logs /app/data/knowledge_ba
 # Set Python path
 ENV PYTHONPATH=/app
 
+# Set database password env var for entrypoint
+ENV DB_PASSWORD=${DB_PASSWORD:-changeme}
+
+# Copy entrypoint script
+COPY scripts/app-entrypoint.sh /app/app-entrypoint.sh
+RUN chmod +x /app/app-entrypoint.sh
+
 # Expose port
 EXPOSE 8430
 
-# Use supervisor to run both nginx and uvicorn
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# Use entrypoint that waits for database
+ENTRYPOINT ["/app/app-entrypoint.sh"]

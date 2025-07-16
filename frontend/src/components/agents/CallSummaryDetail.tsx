@@ -285,7 +285,7 @@ export function CallSummaryDetail({ agentId, summaryId, onClose }: CallSummaryDe
                             <p className="text-xs text-muted-foreground">Tokens In</p>
                           </div>
                           <p className="text-lg font-semibold">{summary.raw_data.total_wire_input_tokens}</p>
-                          <p className="text-xs text-muted-foreground">{summary.raw_data.total_wire_input_tokens_per_minute}/min</p>
+                          <p className="text-xs text-muted-foreground">{summary.raw_data.total_wire_input_tokens_per_minute || 0}/min</p>
                         </div>
                       )}
                       {summary.raw_data?.total_wire_output_tokens && (
@@ -295,7 +295,7 @@ export function CallSummaryDetail({ agentId, summaryId, onClose }: CallSummaryDe
                             <p className="text-xs text-muted-foreground">Tokens Out</p>
                           </div>
                           <p className="text-lg font-semibold">{summary.raw_data.total_wire_output_tokens}</p>
-                          <p className="text-xs text-muted-foreground">{summary.raw_data.total_wire_output_tokens_per_minute}/min</p>
+                          <p className="text-xs text-muted-foreground">{summary.raw_data.total_wire_output_tokens_per_minute || 0}/min</p>
                         </div>
                       )}
                       {summary.raw_data?.total_tts_chars && (
@@ -305,7 +305,7 @@ export function CallSummaryDetail({ agentId, summaryId, onClose }: CallSummaryDe
                             <p className="text-xs text-muted-foreground">TTS Chars</p>
                           </div>
                           <p className="text-lg font-semibold">{summary.raw_data.total_tts_chars}</p>
-                          <p className="text-xs text-muted-foreground">{summary.raw_data.total_tts_chars_per_min}/min</p>
+                          <p className="text-xs text-muted-foreground">{summary.raw_data.total_tts_chars_per_min || 0}/min</p>
                         </div>
                       )}
                       {summary.raw_data?.total_asr_minutes && (
@@ -315,7 +315,7 @@ export function CallSummaryDetail({ agentId, summaryId, onClose }: CallSummaryDe
                             <p className="text-xs text-muted-foreground">ASR Minutes</p>
                           </div>
                           <p className="text-lg font-semibold">{summary.raw_data.total_asr_minutes.toFixed(2)}</p>
-                          <p className="text-xs text-muted-foreground">Factor: {summary.raw_data.total_asr_cost_factor.toFixed(2)}</p>
+                          <p className="text-xs text-muted-foreground">Factor: {(summary.raw_data.total_asr_cost_factor || 0).toFixed(2)}</p>
                         </div>
                       )}
                     </div>

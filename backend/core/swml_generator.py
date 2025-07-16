@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import logging
 import os
 
-from signalwire_agents import AgentBase
+from signalwire_agents import AgentBase, BedrockAgent
 from signalwire_agents.skills.registry import skill_registry
 from .config import settings
 from .security import create_skill_jwt_token
@@ -23,66 +23,92 @@ async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=
     
     # Create an ephemeral agent with the name and recording settings
     agent_name = agent_config.get('name', 'Agent')
+    agent_type = agent_config.get('agent_type', 'regular')
     
     # Extract recording configuration
     record_call = agent_config.get('record_call', False)
     record_format = agent_config.get('record_format', 'mp4')
     record_stereo = agent_config.get('record_stereo', True)
     
-    agent = AgentBase(
-        name=agent_name,
-        record_call=record_call,
-        record_format=record_format,
-        record_stereo=record_stereo
-    )
+    # Create appropriate agent type
+    if agent_type == 'bedrock':
+        # Get Bedrock-specific parameters
+        voice_id = agent_config.get('voice_id', 'tiffany')
+        
+        # Note: BedrockAgent constructor accepts these params but they're placed
+        # in the prompt during SWML generation, not in params
+        agent = BedrockAgent(
+            name=agent_name,
+            voice_id=voice_id,
+            temperature=agent_config.get('temperature', 0.7),
+            top_p=agent_config.get('top_p', 0.9),
+            max_tokens=agent_config.get('max_tokens', 1024)
+        )
+        
+        # Bedrock doesn't support recording yet - log if requested
+        if record_call:
+            logger.warning("Recording is not supported for Bedrock agents")
+    else:
+        agent = AgentBase(
+            name=agent_name,
+            record_call=record_call,
+            record_format=record_format,
+            record_stereo=record_stereo
+        )
     
     # Debug logging to verify recording settings
     logger.info(f"Agent created with record_call={record_call}, format={record_format}, stereo={record_stereo}")
     
-    # Configure languages
-    languages = agent_config.get('languages', [])
-    
-    if languages:
-        # New multi-language configuration
-        for lang in languages:
-            name = lang.get('name', 'English')
-            code = lang.get('code', 'en-US')
-            voice = lang.get('voice', 'nova')
-            engine = lang.get('engine', 'elevenlabs')
-            model = lang.get('model')
-            
-            if engine == 'rime' and model:
-                agent.add_language(name, code, voice, engine=engine, model=model)
-            else:
-                agent.add_language(name, code, voice, engine=engine)
-    else:
-        # Legacy single language configuration
-        voice = agent_config.get('voice', 'nova')
-        engine = agent_config.get('engine', 'elevenlabs')
-        language = agent_config.get('language', 'en-US')
-        model = agent_config.get('model')
+    # Configure languages (only for regular agents - Bedrock uses voice natively)
+    if agent_type != 'bedrock':
+        languages = agent_config.get('languages', [])
         
-        # Determine proper language name
-        lang_names = {
-            'en': 'English', 'es': 'Spanish', 'fr': 'French', 'de': 'German',
-            'pt': 'Portuguese', 'it': 'Italian', 'ja': 'Japanese', 'ko': 'Korean',
-            'zh': 'Chinese', 'ru': 'Russian', 'hi': 'Hindi', 'nl': 'Dutch'
-        }
-        base_lang = language.split('-')[0] if language != 'multi' else 'multi'
-        proper_name = lang_names.get(base_lang, 'English')
-        
-        # Add language configuration
-        if engine == 'rime' and model:
-            agent.add_language(proper_name, language, voice, engine=engine, model=model)
+        if languages:
+            # New multi-language configuration
+            for lang in languages:
+                name = lang.get('name', 'English')
+                code = lang.get('code', 'en-US')
+                voice = lang.get('voice', 'nova')
+                engine = lang.get('engine', 'elevenlabs')
+                model = lang.get('model')
+                
+                if engine == 'rime' and model:
+                    agent.add_language(name, code, voice, engine=engine, model=model)
+                else:
+                    agent.add_language(name, code, voice, engine=engine)
         else:
-            agent.add_language(proper_name, language, voice, engine=engine)
+            # Legacy single language configuration
+            voice = agent_config.get('voice', 'nova')
+            engine = agent_config.get('engine', 'elevenlabs')
+            language = agent_config.get('language', 'en-US')
+            model = agent_config.get('model')
+            
+            # Determine proper language name
+            lang_names = {
+                'en': 'English', 'es': 'Spanish', 'fr': 'French', 'de': 'German',
+                'pt': 'Portuguese', 'it': 'Italian', 'ja': 'Japanese', 'ko': 'Korean',
+                'zh': 'Chinese', 'ru': 'Russian', 'hi': 'Hindi', 'nl': 'Dutch'
+            }
+            base_lang = language.split('-')[0] if language != 'multi' else 'multi'
+            proper_name = lang_names.get(base_lang, 'English')
+            
+            # Add language configuration
+            if engine == 'rime' and model:
+                agent.add_language(proper_name, language, voice, engine=engine, model=model)
+            else:
+                agent.add_language(proper_name, language, voice, engine=engine)
     
     # Set parameters
-    default_params = {
-        'end_of_speech_timeout': 700,
-        'attention_timeout': 5000
-    }
-    params = {**default_params, **agent_config.get('params', {})}
+    if agent_type == 'bedrock':
+        # Bedrock agents should have empty params by default
+        params = agent_config.get('params', {})
+    else:
+        # Regular agents get default params
+        default_params = {
+            'end_of_speech_timeout': 700,
+            'attention_timeout': 5000
+        }
+        params = {**default_params, **agent_config.get('params', {})}
     
     # Set parameters individually to avoid issues
     for key, value in params.items():
@@ -102,31 +128,33 @@ async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=
             bullets=bullets if bullets else None
         )
     
-    # Add hints if provided (legacy support)
-    if hints := agent_config.get('hints'):
-        agent.add_hints(hints)
-    
-    # Add new hint configurations
-    if simple_hints := agent_config.get('simple_hints'):
-        agent.add_hints(simple_hints)
-    
-    if pattern_hints := agent_config.get('pattern_hints'):
-        for pattern_hint in pattern_hints:
-            agent.add_pattern_hint(
-                hint=pattern_hint.get('hint', ''),
-                pattern=pattern_hint.get('pattern', ''),
-                replace=pattern_hint.get('replace', ''),
-                ignore_case=pattern_hint.get('ignore_case', False)
-            )
-    
-    # Add pronunciations
-    if pronunciations := agent_config.get('pronunciations'):
-        for pronunciation in pronunciations:
-            agent.add_pronunciation(
-                replace=pronunciation.get('replace', ''),
-                with_text=pronunciation.get('with', ''),
-                ignore_case=pronunciation.get('ignore_case', False)
-            )
+    # Add hints and pronunciations (only for regular agents - Bedrock handles these natively)
+    if agent_type != 'bedrock':
+        # Add hints if provided (legacy support)
+        if hints := agent_config.get('hints'):
+            agent.add_hints(hints)
+        
+        # Add new hint configurations
+        if simple_hints := agent_config.get('simple_hints'):
+            agent.add_hints(simple_hints)
+        
+        if pattern_hints := agent_config.get('pattern_hints'):
+            for pattern_hint in pattern_hints:
+                agent.add_pattern_hint(
+                    hint=pattern_hint.get('hint', ''),
+                    pattern=pattern_hint.get('pattern', ''),
+                    replace=pattern_hint.get('replace', ''),
+                    ignore_case=pattern_hint.get('ignore_case', False)
+                )
+        
+        # Add pronunciations
+        if pronunciations := agent_config.get('pronunciations'):
+            for pronunciation in pronunciations:
+                agent.add_pronunciation(
+                    replace=pronunciation.get('replace', ''),
+                    with_text=pronunciation.get('with', ''),
+                    ignore_case=pronunciation.get('ignore_case', False)
+                )
     
     # Set global data
     if global_data := agent_config.get('global_data'):
@@ -319,6 +347,12 @@ async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=
                             logger.info("Using OPENWEATHERMAP_API_KEY from environment")
             
             try:
+                # For all agents, we want to use our SWAIG endpoint, not the SDK default
+                # Add swaig_fields to override webhook configuration
+                skill_params['swaig_fields'] = {
+                    'web_hook_url': f"https://{settings.hostname}:{settings.port}/api/swaig/function"
+                }
+                
                 # Use the SDK's proper add_skill method
                 # The SDK will handle skill loading and configuration
                 agent.add_skill(skill_name, skill_params)
@@ -434,12 +468,14 @@ async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=
     
     # Get the SWML document from the agent
     try:
-        # The agent needs to be prepared for rendering
-        # This happens automatically when serving, but we need to trigger it manually
-        agent._render_swml()
-        
-        # Get the rendered SWML as JSON string
-        swml_json = agent.render_document()
+        # For BedrockAgent, we need to call _render_swml directly to get the transformed version
+        if agent_type == 'bedrock':
+            # BedrockAgent._render_swml returns the transformed JSON string directly
+            swml_json = agent._render_swml()
+        else:
+            # For regular agents, use the standard render_document method
+            agent._render_swml()
+            swml_json = agent.render_document()
         
         # Parse the JSON string to a dictionary
         import json
@@ -453,8 +489,10 @@ async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=
         # Override webhook URLs in SWAIG functions to use our endpoint
         if 'sections' in swml_doc and 'main' in swml_doc['sections']:
             for section in swml_doc['sections']['main']:
-                if 'ai' in section and 'SWAIG' in section['ai'] and 'functions' in section['ai']['SWAIG']:
-                    for function in section['ai']['SWAIG']['functions']:
+                # Check for both 'ai' and 'amazon_bedrock' verbs
+                ai_verb_key = 'amazon_bedrock' if agent_type == 'bedrock' else 'ai'
+                if ai_verb_key in section and 'SWAIG' in section[ai_verb_key] and 'functions' in section[ai_verb_key]['SWAIG']:
+                    for function in section[ai_verb_key]['SWAIG']['functions']:
                         # Remove the SDK's per-function webhook URL - we'll use the global default
                         if 'web_hook_url' in function:
                             del function['web_hook_url']
@@ -529,10 +567,10 @@ async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=
                         }
                     
                     # Ensure SWAIG defaults has the global webhook URL
-                    if 'SWAIG' in section['ai']:
-                        if 'defaults' not in section['ai']['SWAIG']:
-                            section['ai']['SWAIG']['defaults'] = {}
-                        section['ai']['SWAIG']['defaults']['web_hook_url'] = f"https://{settings.hostname}:{settings.port}/api/swaig/function"
+                    if 'SWAIG' in section[ai_verb_key]:
+                        if 'defaults' not in section[ai_verb_key]['SWAIG']:
+                            section[ai_verb_key]['SWAIG']['defaults'] = {}
+                        section[ai_verb_key]['SWAIG']['defaults']['web_hook_url'] = f"https://{settings.hostname}:{settings.port}/api/swaig/function"
         
         # Return the modified SWML document
         return swml_doc

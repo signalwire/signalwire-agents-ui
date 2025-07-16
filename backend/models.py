@@ -43,6 +43,7 @@ class Agent(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     updated_by = Column(String)  # User ID who last updated
     version = Column(Integer, default=1)  # For optimistic locking
+    agent_type = Column(String, default="regular")  # "regular" or "bedrock"
     
     # Post-prompt fields
     post_prompt_enabled = Column(Boolean, default=False)

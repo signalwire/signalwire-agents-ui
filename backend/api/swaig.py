@@ -90,6 +90,8 @@ async def handle_swaig_function(
 ) -> SWAIGResponse:
     """Handle SWAIG function calls from SignalWire using ephemeral agents."""
     
+    logger.info(f"SWAIG function endpoint called: function={request.function}, has_meta_data={bool(request.meta_data)}, has_token={'token' in (request.meta_data or {})}")
+    
     # Extract authentication
     agent_id = None
     skill_name = None

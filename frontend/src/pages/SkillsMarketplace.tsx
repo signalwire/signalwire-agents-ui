@@ -256,9 +256,14 @@ export function SkillsMarketplacePage() {
                         <div className="flex items-center gap-2">
                           <Switch
                             checked={skill.enabled}
+                            disabled={true}
                             onCheckedChange={(checked) => 
                               toggleSkillMutation.mutate({ skillName: skill.name, enabled: checked })
                             }
+                          />
+                          <HelpTooltip 
+                            content="Skill enable/disable is not yet implemented. All installed skills are available." 
+                            side="left"
                           />
                           <Button
                             variant="ghost"

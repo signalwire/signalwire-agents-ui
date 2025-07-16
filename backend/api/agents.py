@@ -25,11 +25,17 @@ logger = logging.getLogger(__name__)
 
 class AgentConfig(BaseModel):
     """Agent configuration schema."""
+    agent_type: str = Field(default="regular", description="Agent type: regular or bedrock")
     voice: str = Field(default="nova", description="Voice to use")
     engine: str = Field(default="elevenlabs", description="TTS engine")
     language: str = Field(default="en-US", description="Language code")
     model: Optional[str] = Field(None, description="Model for certain engines")
     languages: Optional[List[Dict[str, Any]]] = Field(None, description="Multi-language configuration")
+    # Bedrock-specific parameters
+    voice_id: Optional[str] = Field(None, description="Bedrock voice ID")
+    temperature: Optional[float] = Field(None, description="Bedrock temperature (0-1)")
+    top_p: Optional[float] = Field(None, description="Bedrock top_p (0-1)")
+    max_tokens: Optional[int] = Field(None, description="Bedrock max tokens")
     prompt_sections: List[Dict[str, Any]] = Field(default_factory=list)
     skills: List[Dict[str, Any]] = Field(default_factory=list)
     params: Dict[str, Any] = Field(default_factory=dict)
@@ -84,6 +90,7 @@ class AgentResponse(BaseModel):
     updated_at: datetime
     updated_by: Optional[str] = None
     version: Optional[int] = None
+    agent_type: Optional[str] = None
     knowledge_bases: Optional[List[Dict[str, Any]]] = None
 
 
@@ -140,6 +147,7 @@ async def list_agents(
             updated_at=agent.updated_at,
             updated_by=agent.updated_by,
             version=agent.version,
+            agent_type=agent.agent_type,
             knowledge_bases=agent_kbs.get(agent.id, [])
         )
         for agent in agents
@@ -155,10 +163,24 @@ async def create_agent(
 ) -> AgentResponse:
     """Create a new agent."""
     # Create agent
+    config_dict = agent_data.config.model_dump()
+    agent_type = config_dict.get('agent_type', 'regular')
+    
+    # Filter out Bedrock-incompatible fields if it's a Bedrock agent
+    if agent_type == 'bedrock':
+        # Remove fields that Bedrock doesn't support
+        config_dict.pop('languages', None)
+        config_dict.pop('simple_hints', None)
+        config_dict.pop('pattern_hints', None)
+        config_dict.pop('hints', None)
+        config_dict.pop('pronunciations', None)
+        config_dict.pop('contexts_steps_config', None)
+    
     agent = Agent(
         name=agent_data.name,
         description=agent_data.description,
-        config=agent_data.config.model_dump(),
+        config=config_dict,
+        agent_type=agent_type,
         updated_by=str(auth_data["token"].id)
     )
     db.add(agent)
@@ -194,7 +216,8 @@ async def create_agent(
         created_at=agent.created_at,
         updated_at=agent.updated_at,
         updated_by=agent.updated_by,
-        version=agent.version
+        version=agent.version,
+        agent_type=agent.agent_type
     )
 
 
@@ -240,6 +263,7 @@ async def get_agent(
         updated_at=agent.updated_at,
         updated_by=agent.updated_by,
         version=agent.version,
+        agent_type=agent.agent_type,
         knowledge_bases=knowledge_bases
     )
 
@@ -280,8 +304,22 @@ async def update_agent(
         agent.description = agent_data.description
     
     if agent_data.config is not None:
-        changes["config"] = {"old": agent.config, "new": agent_data.config.model_dump()}
-        agent.config = agent_data.config.model_dump()
+        config_dict = agent_data.config.model_dump()
+        agent_type = config_dict.get('agent_type', agent.agent_type or 'regular')
+        
+        # Filter out Bedrock-incompatible fields if it's a Bedrock agent
+        if agent_type == 'bedrock':
+            # Remove fields that Bedrock doesn't support
+            config_dict.pop('languages', None)
+            config_dict.pop('simple_hints', None)
+            config_dict.pop('pattern_hints', None)
+            config_dict.pop('hints', None)
+            config_dict.pop('pronunciations', None)
+            config_dict.pop('contexts_steps_config', None)
+        
+        changes["config"] = {"old": agent.config, "new": config_dict}
+        agent.config = config_dict
+        agent.agent_type = agent_type
         logger.info(f"Saved config with languages: {'languages' in agent.config}")
         if 'languages' in agent.config:
             logger.info(f"Saved languages: {agent.config['languages']}")
@@ -321,7 +359,8 @@ async def update_agent(
         created_at=agent.created_at,
         updated_at=agent.updated_at,
         updated_by=agent.updated_by,
-        version=agent.version
+        version=agent.version,
+        agent_type=agent.agent_type
     )
 
 

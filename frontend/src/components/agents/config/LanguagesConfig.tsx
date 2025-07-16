@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { LANGUAGE_PRESETS, ELEVENLABS_VOICE_MAP, getRimeVoices } from '@/lib/languagePresets'
 import { HelpTooltip } from '@/components/ui/help-tooltip'
 import { helpContent } from '@/lib/helpContent'
+import { AmazonVoiceSelector } from '@/components/agents/AmazonVoiceSelector'
 
 interface LanguageConfig {
   id: string
@@ -194,6 +195,11 @@ export function LanguagesConfig({ languages, onChange, languageConfigs }: Langua
                                 const matchingVoice = Object.values(ELEVENLABS_VOICE_MAP).find(v => v.id === language.voice)
                                 return matchingVoice ? matchingVoice.name : language.voice
                               }
+                              // For Amazon, extract the voice name from the format
+                              if (language.engine === 'amazon' && language.voice.startsWith('amazon.')) {
+                                const parts = language.voice.split('.')
+                                return parts[2] || language.voice
+                              }
                               return language.voice
                             })()}
                           </Badge>
@@ -304,6 +310,7 @@ export function LanguagesConfig({ languages, onChange, languageConfigs }: Langua
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="amazon">Amazon</SelectItem>
                           <SelectItem value="rime">Rime</SelectItem>
                           <SelectItem value="elevenlabs">ElevenLabs</SelectItem>
                           <SelectItem value="openai">OpenAI</SelectItem>
@@ -334,6 +341,15 @@ export function LanguagesConfig({ languages, onChange, languageConfigs }: Langua
                     )}
 
                     {/* Voice */}
+                    {language.engine === 'amazon' ? (
+                      <AmazonVoiceSelector
+                        languageCode={language.code}
+                        voice={language.voice}
+                        engine={language.model}
+                        onVoiceChange={(voice) => updateLanguage(language.id, { voice })}
+                        onEngineChange={(engine) => updateLanguage(language.id, { model: engine })}
+                      />
+                    ) : (
                     <div className="space-y-2">
                       <Label>Voice</Label>
                       {language.engine === 'elevenlabs' ? (
@@ -399,6 +415,7 @@ export function LanguagesConfig({ languages, onChange, languageConfigs }: Langua
                         />
                       )}
                     </div>
+                    )}
                   </div>
                 </CardContent>
               </CollapsibleContent>

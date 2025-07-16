@@ -2,7 +2,7 @@
 .env
 .env.local
 .env.*.local
-
+.env_init
 # Dependencies
 node_modules/
 venv/

@@ -74,14 +74,6 @@ export function MainLayout({ children }: MainLayoutProps) {
                   Call Summaries
                 </Link>
                 <Link
-                  to="/skills"
-                  className={`text-sm font-medium transition-colors hover:text-nav-hover ${
-                    location.pathname.startsWith('/skills') ? 'text-nav-active' : 'text-muted-foreground'
-                  }`}
-                >
-                  Skills
-                </Link>
-                <Link
                   to="/admin"
                   className={`text-sm font-medium transition-colors hover:text-nav-hover ${
                     location.pathname.startsWith('/admin') ? 'text-nav-active' : 'text-muted-foreground'
@@ -170,15 +162,6 @@ export function MainLayout({ children }: MainLayoutProps) {
               }`}
             >
               Call Summaries
-            </Link>
-            <Link
-              to="/skills"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block py-2 px-3 rounded-md text-sm font-medium transition-colors hover:bg-accent ${
-                location.pathname.startsWith('/skills') ? 'text-nav-active bg-accent/50' : 'text-muted-foreground'
-              }`}
-            >
-              Skills
             </Link>
             <Link
               to="/admin"
