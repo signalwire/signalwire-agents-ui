@@ -118,7 +118,6 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     INSERT INTO settings (id, key, value) 
     SELECT 'default-languages', 'languages', '[]'::jsonb
     WHERE NOT EXISTS (SELECT 1 FROM settings WHERE key = 'languages');
-EOSQL
 
     -- Record base schema as migrated
     INSERT INTO schema_migrations (version) VALUES ('base-schema') ON CONFLICT (version) DO NOTHING;
