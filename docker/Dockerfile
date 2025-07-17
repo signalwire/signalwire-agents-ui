@@ -56,7 +56,7 @@ RUN python3.11 -m pip install --no-cache-dir -r backend/requirements.txt
 # Layer 3: Frontend dependencies (changes less frequently)
 COPY frontend/package*.json ./frontend/
 WORKDIR /app/frontend
-RUN npm ci --only=production
+RUN npm ci
 
 # Layer 4: Frontend build
 COPY frontend/ .
