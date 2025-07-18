@@ -97,4 +97,164 @@
       font-size: 16px !important;
     }
   }
+  
+  /* PWA and iOS safe area support */
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  /* iOS PWA status bar styling */
+  @media (display-mode: standalone) {
+    body {
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+    
+    /* Hide scrollbars in PWA mode for cleaner look */
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: hsl(var(--border));
+      border-radius: 2px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: hsl(var(--muted-foreground));
+    }
+  }
+  
+  /* Install prompt styling */
+  .install-prompt {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    animation: slideUp 0.3s ease-out;
+  }
+  
+  /* Backend status overlay - ensure it always appears above everything */
+  .backend-status-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 2147483647 !important; /* Maximum safe z-index value */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(0, 0, 0, 0.8) !important;
+    backdrop-filter: blur(4px) !important;
+  }
+  
+  @keyframes slideUp {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  /* Better touch targets for mobile */
+  @media (max-width: 768px) {
+    button, [role="button"], input, select, textarea {
+      min-height: 44px;
+    }
+    
+    /* Ensure tap targets are large enough */
+    .tap-target {
+      min-width: 44px;
+      min-height: 44px;
+    }
+  }
+  
+  /* iOS PWA checkbox fixes */
+  @media (display-mode: standalone) {
+    /* Fix checkbox appearance in iOS PWA mode */
+    .ios-checkbox,
+    [role="checkbox"] {
+      -webkit-appearance: none !important;
+      appearance: none !important;
+      width: 1rem !important;
+      height: 1rem !important;
+      min-width: 1rem !important;
+      min-height: 1rem !important;
+      max-width: 1rem !important;
+      max-height: 1rem !important;
+      flex-shrink: 0 !important;
+      border-radius: 0.125rem !important;
+      border: 1px solid hsl(var(--primary)) !important;
+      background: transparent !important;
+      position: relative !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      box-sizing: border-box !important;
+    }
+    
+    .ios-checkbox[data-state="checked"],
+    [role="checkbox"][data-state="checked"] {
+      background: hsl(var(--primary)) !important;
+      color: hsl(var(--primary-foreground)) !important;
+    }
+    
+    .ios-checkbox svg,
+    [role="checkbox"] svg {
+      width: 1rem !important;
+      height: 1rem !important;
+      color: currentColor !important;
+      flex-shrink: 0 !important;
+    }
+    
+    /* Ensure proper label alignment with fixed checkbox */
+    label[for="remember"] {
+      display: flex !important;
+      align-items: center !important;
+      gap: 0.5rem !important;
+    }
+  }
+  
+  /* Additional iOS-specific fixes */
+  @supports (-webkit-touch-callout: none) {
+    /* iOS Safari specific styles - applies to both PWA and regular Safari */
+    .ios-checkbox,
+    [role="checkbox"] {
+      -webkit-tap-highlight-color: transparent;
+      -webkit-appearance: none;
+      appearance: none;
+      width: 1rem;
+      height: 1rem;
+      min-width: 1rem;
+      min-height: 1rem;
+      max-width: 1rem;
+      max-height: 1rem;
+      flex-shrink: 0;
+      box-sizing: border-box;
+    }
+    
+    .ios-checkbox svg,
+    [role="checkbox"] svg {
+      width: 1rem;
+      height: 1rem;
+      flex-shrink: 0;
+    }
+  }
 }

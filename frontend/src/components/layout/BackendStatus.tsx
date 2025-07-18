@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Loader2, WifiOff, CheckCircle } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 
@@ -29,15 +30,30 @@ export function BackendStatus({ isConnected, isReady }: BackendStatusProps) {
 
   if (!showOverlay) return null
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <Card className="max-w-md w-full p-8">
+  return createPortal(
+    <div 
+      className="backend-status-overlay p-4" 
+      style={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 2147483647, // Maximum safe z-index value
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(0, 0, 0, 0.8)',
+        backdropFilter: 'blur(4px)'
+      }}
+    >
+      <Card className="max-w-md w-full p-8 mx-auto shadow-2xl animate-in fade-in-0 zoom-in-95 duration-200">
         <div className="flex flex-col items-center text-center space-y-4">
           {isReconnecting ? (
             <>
-              <div className="relative">
+              <div className="flex flex-col items-center space-y-4">
                 <WifiOff className="h-16 w-16 text-destructive" />
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground absolute -bottom-2 -right-2" />
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
               <h2 className="text-2xl font-semibold">Backend Unavailable</h2>
               <p className="text-muted-foreground">
@@ -49,9 +65,9 @@ export function BackendStatus({ isConnected, isReady }: BackendStatusProps) {
             </>
           ) : (
             <>
-              <div className="relative">
+              <div className="flex flex-col items-center space-y-4">
                 <CheckCircle className="h-16 w-16 text-green-500" />
-                <Loader2 className="h-8 w-8 animate-spin text-primary absolute -bottom-2 -right-2" />
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
               <h2 className="text-2xl font-semibold">Backend Starting</h2>
               <p className="text-muted-foreground">
@@ -64,6 +80,7 @@ export function BackendStatus({ isConnected, isReady }: BackendStatusProps) {
           )}
         </div>
       </Card>
-    </div>
+    </div>,
+    document.body
   )
 }

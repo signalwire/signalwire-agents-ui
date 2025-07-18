@@ -15,6 +15,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { ThemeProvider } from '@/components/theme-provider'
 import { BackendProvider, useBackend } from '@/contexts/BackendContext'
 import { BackendStatus } from '@/components/layout/BackendStatus'
+import { PWAInstallPrompt } from '@/components/PWAInstallPrompt'
 
 function AppContent() {
   const { isConnected, isReady } = useBackend();
@@ -134,6 +135,7 @@ function AppContent() {
           />
         </Routes>
         <Toaster />
+        <PWAInstallPrompt />
     </>
   )
 }

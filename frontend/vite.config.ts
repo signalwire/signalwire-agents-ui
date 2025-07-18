@@ -22,5 +22,13 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
+    rollupOptions: {
+      // Ensure service worker and manifest are copied
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+      },
+    },
   },
+  // PWA configuration
+  publicDir: 'public',
 })
