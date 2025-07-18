@@ -630,7 +630,14 @@ async def get_media_settings_endpoint(
     auth_data: Dict[str, Any] = Depends(verify_jwt_token)
 ):
     """Get media library settings."""
-    settings = await get_media_settings(db)
+    try:
+        settings = await get_media_settings(db)
+    except Exception as e:
+        # If we can't get settings, use defaults and log the error
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Failed to get media settings, using defaults: {e}")
+        settings = DEFAULT_MEDIA_SETTINGS
     
     # Get storage usage stats
     total_size = 0
@@ -679,15 +686,30 @@ async def get_media_settings_endpoint(
         logger.warning(f"Error querying unused files: {e}")
         # Continue with zero count
     
-    return {
-        "settings": settings,
-        "stats": {
-            "total_files": file_count,
-            "total_size": total_size,
-            "total_size_gb": round(total_size / 1024 / 1024 / 1024, 2),
-            "unused_files": unused_count
+    try:
+        return {
+            "settings": settings,
+            "stats": {
+                "total_files": file_count,
+                "total_size": total_size,
+                "total_size_gb": round(total_size / 1024 / 1024 / 1024, 2),
+                "unused_files": unused_count
+            }
         }
-    }
+    except Exception as e:
+        # Last resort: always return a valid response with defaults
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Failed to build media settings response: {e}")
+        return {
+            "settings": DEFAULT_MEDIA_SETTINGS,
+            "stats": {
+                "total_files": 0,
+                "total_size": 0,
+                "total_size_gb": 0.0,
+                "unused_files": 0
+            }
+        }
 
 
 @router.put("/settings/media")

@@ -64,14 +64,16 @@ export function MediaLibraryTab() {
         unused_files: 0
       })
       
-      // Only show error toast for non-404 errors (404 is expected when no settings exist yet)
-      if (error.response?.status !== 404) {
+      // Only show error toast for actual server errors (5xx), not for missing settings
+      if (error.response?.status >= 500) {
         toast({
           title: 'Error loading settings',
           description: 'Using default media library settings',
           variant: 'destructive'
         })
       }
+      // For other errors (like 404, 403, etc.), we silently use defaults
+      // since missing settings is a normal initial state
     }
   }
 
