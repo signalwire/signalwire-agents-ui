@@ -34,9 +34,16 @@ export function PWAInstallPrompt() {
 
     // For iOS, show prompt if not already installed and conditions are met
     if (iOS && !standalone) {
-      // Check if user has dismissed this before
-      const dismissed = localStorage.getItem('pwa-install-dismissed')
-      if (!dismissed) {
+      // Check if user has dismissed this before and if 24 hours have passed
+      const dismissedTimestamp = localStorage.getItem('pwa-install-dismissed-timestamp')
+      const now = Date.now()
+      const twentyFourHours = 24 * 60 * 60 * 1000
+      
+      if (!dismissedTimestamp || (now - parseInt(dismissedTimestamp)) > twentyFourHours) {
+        // Clean up old dismissal if it's expired
+        if (dismissedTimestamp && (now - parseInt(dismissedTimestamp)) > twentyFourHours) {
+          localStorage.removeItem('pwa-install-dismissed-timestamp')
+        }
         setTimeout(() => setShowPrompt(true), 3000) // Show after 3 seconds
       }
     }
@@ -66,12 +73,16 @@ export function PWAInstallPrompt() {
 
   const handleDismiss = () => {
     setShowPrompt(false)
-    localStorage.setItem('pwa-install-dismissed', 'true')
-    
-    // Remove the dismissal after 24 hours
-    setTimeout(() => {
-      localStorage.removeItem('pwa-install-dismissed')
-    }, 24 * 60 * 60 * 1000)
+    // Store timestamp when dismissed instead of using setTimeout
+    localStorage.setItem('pwa-install-dismissed-timestamp', Date.now().toString())
+  }
+
+  // Debug function to reset the dismissal (can be called from browser console)
+  if (typeof window !== 'undefined') {
+    (window as any).resetPWAPrompt = () => {
+      localStorage.removeItem('pwa-install-dismissed-timestamp')
+      console.log('PWA install prompt reset - refresh the page to see it again')
+    }
   }
 
   if (!showPrompt || isStandalone) {
