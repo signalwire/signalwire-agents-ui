@@ -12,7 +12,17 @@ from .security import create_skill_jwt_token
 logger = logging.getLogger(__name__)
 
 
-async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=None) -> Dict[str, Any]:
+def get_base_url(request=None) -> str:
+    """Get the base URL from request or fall back to settings."""
+    if request:
+        host = request.headers.get('host', f"{settings.hostname}:{settings.port}")
+        scheme = request.headers.get('x-forwarded-proto', 'https')
+        return f"{scheme}://{host}"
+    else:
+        return f"https://{settings.hostname}:{settings.port}"
+
+
+async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=None, request=None) -> Dict[str, Any]:
     """Generate a SWML document from agent configuration using the SDK.
     
     Args:
@@ -261,7 +271,8 @@ async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=
     
     # Configure SWAIG webhook URL
     # The SDK will handle auth via basic auth in the SWML
-    agent.set_web_hook_url(f"https://{settings.hostname}:{settings.port}/api/swaig/function")
+    base_url = get_base_url(request)
+    agent.set_web_hook_url(f"{base_url}/api/swaig/function")
     
     # Add skills using the proper SDK method
     if skills := agent_config.get('skills'):
@@ -350,7 +361,7 @@ async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=
                 # For all agents, we want to use our SWAIG endpoint, not the SDK default
                 # Add swaig_fields to override webhook configuration
                 skill_params['swaig_fields'] = {
-                    'web_hook_url': f"https://{settings.hostname}:{settings.port}/api/swaig/function"
+                    'web_hook_url': f"{base_url}/api/swaig/function"
                 }
                 
                 # Use the SDK's proper add_skill method
@@ -458,7 +469,7 @@ async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=
             agent.set_post_prompt_url(agent_config['post_prompt_url'])
         else:
             # Use built-in handler
-            agent.set_post_prompt_url(f"https://{settings.hostname}:{settings.port}/api/post-prompt/receive")
+            agent.set_post_prompt_url(f"{base_url}/api/post-prompt/receive")
             
             # Only add auth token to global_data when using built-in handler
             auth_token = create_skill_jwt_token(agent_id, "general", {})
@@ -570,7 +581,7 @@ async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=
                     if 'SWAIG' in section[ai_verb_key]:
                         if 'defaults' not in section[ai_verb_key]['SWAIG']:
                             section[ai_verb_key]['SWAIG']['defaults'] = {}
-                        section[ai_verb_key]['SWAIG']['defaults']['web_hook_url'] = f"https://{settings.hostname}:{settings.port}/api/swaig/function"
+                        section[ai_verb_key]['SWAIG']['defaults']['web_hook_url'] = f"{base_url}/api/swaig/function"
         
         # Return the modified SWML document
         return swml_doc
@@ -578,7 +589,7 @@ async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=
     except Exception as e:
         logger.error(f"Error generating SWML from agent: {e}")
         # Fall back to manual generation
-        return generate_swml_manual(agent_config, agent_id)
+        return generate_swml_manual(agent_config, agent_id, request)
 
 
 def add_manual_skill_functions(agent: AgentBase, skill_name: str):
@@ -659,7 +670,7 @@ def add_manual_skill_functions(agent: AgentBase, skill_name: str):
         )
 
 
-def generate_swml_manual(agent_config: Dict[str, Any], agent_id: str) -> Dict[str, Any]:
+def generate_swml_manual(agent_config: Dict[str, Any], agent_id: str, request=None) -> Dict[str, Any]:
     """Manual SWML generation as fallback."""
     
     # Build prompt sections
@@ -755,9 +766,10 @@ def generate_swml_manual(agent_config: Dict[str, Any], agent_id: str) -> Dict[st
     ai_config["params"] = {**default_params, **agent_config.get('params', {})}
     
     # Build SWAIG configuration
+    base_url = get_base_url(request)
     swaig_config = {
         "defaults": {
-            "web_hook_url": f"https://{settings.hostname}:{settings.port}/api/swaig/function"
+            "web_hook_url": f"{base_url}/api/swaig/function"
         }
     }
     
@@ -919,7 +931,7 @@ def generate_swml_manual(agent_config: Dict[str, Any], agent_id: str) -> Dict[st
         elif agent_config.get('post_prompt_url'):  # Legacy support
             ai_config["post_prompt_url"] = agent_config['post_prompt_url']
         else:
-            ai_config["post_prompt_url"] = f"https://{settings.hostname}:{settings.port}/api/post-prompt/receive"
+            ai_config["post_prompt_url"] = f"{base_url}/api/post-prompt/receive"
     
     # Build the SWML document
     main_section = [{"answer": {}}]

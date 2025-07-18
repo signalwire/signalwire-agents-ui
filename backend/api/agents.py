@@ -94,9 +94,9 @@ class AgentResponse(BaseModel):
     knowledge_bases: Optional[List[Dict[str, Any]]] = None
 
 
-def format_swml_url(agent_id: str, config: Dict[str, Any]) -> str:
+def format_swml_url(agent_id: str, config: Dict[str, Any], request=None) -> str:
     """Format SWML URL with basic auth credentials if configured."""
-    swml_url = get_swml_url(agent_id)
+    swml_url = get_swml_url(agent_id, request)
     if config.get("basic_auth_user"):
         # Show the format but not the actual password
         swml_url = swml_url.replace("https://", f"https://{config['basic_auth_user']}:****@")
@@ -142,7 +142,7 @@ async def list_agents(
             name=agent.name,
             description=agent.description,
             config=agent.config,
-            swml_url=format_swml_url(str(agent.id), agent.config),
+            swml_url=format_swml_url(str(agent.id), agent.config, request),
             created_at=agent.created_at,
             updated_at=agent.updated_at,
             updated_by=agent.updated_by,
@@ -212,7 +212,7 @@ async def create_agent(
         name=agent.name,
         description=agent.description,
         config=agent.config,
-        swml_url=format_swml_url(str(agent.id), agent.config),
+        swml_url=format_swml_url(str(agent.id), agent.config, request),
         created_at=agent.created_at,
         updated_at=agent.updated_at,
         updated_by=agent.updated_by,
@@ -258,7 +258,7 @@ async def get_agent(
         name=agent.name,
         description=agent.description,
         config=agent.config,
-        swml_url=format_swml_url(str(agent.id), agent.config),
+        swml_url=format_swml_url(str(agent.id), agent.config, request),
         created_at=agent.created_at,
         updated_at=agent.updated_at,
         updated_by=agent.updated_by,
@@ -355,7 +355,7 @@ async def update_agent(
         name=agent.name,
         description=agent.description,
         config=agent.config,
-        swml_url=format_swml_url(str(agent.id), agent.config),
+        swml_url=format_swml_url(str(agent.id), agent.config, request),
         created_at=agent.created_at,
         updated_at=agent.updated_at,
         updated_by=agent.updated_by,
@@ -417,7 +417,7 @@ async def replace_agent(
         name=target_agent.name,
         description=target_agent.description,
         config=target_agent.config,
-        swml_url=format_swml_url(str(target_agent.id), target_agent.config),
+        swml_url=format_swml_url(str(target_agent.id), target_agent.config, request),
         created_at=target_agent.created_at,
         updated_at=target_agent.updated_at
     )

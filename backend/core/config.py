@@ -79,9 +79,16 @@ class Settings(BaseSettings):
 settings = Settings()
 
 
-def get_swml_url(agent_id: str) -> str:
+def get_swml_url(agent_id: str, request=None) -> str:
     """Get the public SWML URL for an agent."""
-    return f"https://{settings.hostname}:{settings.port}/agents/{agent_id}/swml"
+    if request:
+        # Use the actual host from the request
+        host = request.headers.get('host', f"{settings.hostname}:{settings.port}")
+        scheme = request.headers.get('x-forwarded-proto', 'https')
+        return f"{scheme}://{host}/agents/{agent_id}/swml"
+    else:
+        # Fallback to configured values for backward compatibility
+        return f"https://{settings.hostname}:{settings.port}/agents/{agent_id}/swml"
 
 
 def get_swaig_handler_url() -> str:

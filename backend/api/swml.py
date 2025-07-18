@@ -113,7 +113,7 @@ async def get_agent_swml(
     enriched_config["knowledge_base_ids"] = [kb["id"] for kb in knowledge_bases]
     
     # Generate SWML with db session for env var resolution
-    swml = await generate_swml(enriched_config, str(agent.id), db)
+    swml = await generate_swml(enriched_config, str(agent.id), db, request)
     
     # Return as JSON with proper content type
     return JSONResponse(
