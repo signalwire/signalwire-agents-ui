@@ -186,11 +186,13 @@
     }
   }
   
-  /* iOS PWA checkbox fixes */
+  /* iOS PWA form control fixes */
   @media (display-mode: standalone) {
     /* Fix checkbox appearance in iOS PWA mode */
     .ios-checkbox,
-    [role="checkbox"] {
+    [role="checkbox"],
+    button[role="checkbox"],
+    [data-radix-collection-item][role="checkbox"] {
       -webkit-appearance: none !important;
       appearance: none !important;
       width: 1rem !important;
@@ -208,27 +210,138 @@
       align-items: center !important;
       justify-content: center !important;
       box-sizing: border-box !important;
+      vertical-align: top !important;
     }
     
     .ios-checkbox[data-state="checked"],
-    [role="checkbox"][data-state="checked"] {
+    [role="checkbox"][data-state="checked"],
+    button[role="checkbox"][data-state="checked"],
+    [data-radix-collection-item][role="checkbox"][data-state="checked"] {
       background: hsl(var(--primary)) !important;
       color: hsl(var(--primary-foreground)) !important;
     }
     
     .ios-checkbox svg,
-    [role="checkbox"] svg {
+    [role="checkbox"] svg,
+    button[role="checkbox"] svg,
+    [data-radix-collection-item][role="checkbox"] svg {
       width: 1rem !important;
       height: 1rem !important;
       color: currentColor !important;
       flex-shrink: 0 !important;
     }
+
+    /* Fix radio button appearance in iOS PWA mode */
+    [role="radio"],
+    button[role="radio"],
+    [data-radix-collection-item][role="radio"] {
+      -webkit-appearance: none !important;
+      appearance: none !important;
+      width: 1rem !important;
+      height: 1rem !important;
+      min-width: 1rem !important;
+      min-height: 1rem !important;
+      max-width: 1rem !important;
+      max-height: 1rem !important;
+      border-radius: 50% !important;
+      border: 1px solid hsl(var(--primary)) !important;
+      background: transparent !important;
+      position: relative !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      box-sizing: border-box !important;
+      vertical-align: top !important;
+      flex-shrink: 0 !important;
+    }
     
-    /* Ensure proper label alignment with fixed checkbox */
-    label[for="remember"] {
+    [role="radio"][data-state="checked"],
+    button[role="radio"][data-state="checked"],
+    [data-radix-collection-item][role="radio"][data-state="checked"] {
+      background: hsl(var(--primary)) !important;
+      border-color: hsl(var(--primary)) !important;
+    }
+    
+    [role="radio"] svg,
+    button[role="radio"] svg,
+    [data-radix-collection-item][role="radio"] svg {
+      width: 0.5rem !important;
+      height: 0.5rem !important;
+      fill: hsl(var(--primary-foreground)) !important;
+      color: hsl(var(--primary-foreground)) !important;
+    }
+
+    /* Fix switch/toggle appearance in iOS PWA mode */
+    [role="switch"],
+    button[role="switch"],
+    [data-radix-collection-item][role="switch"] {
+      -webkit-appearance: none !important;
+      appearance: none !important;
+      width: 2.75rem !important; /* 44px */
+      height: 1.5rem !important; /* 24px */
+      min-width: 2.75rem !important;
+      min-height: 1.5rem !important;
+      max-width: 2.75rem !important;
+      max-height: 1.5rem !important;
+      border-radius: 0.75rem !important; /* rounded-full */
+      border: 1px solid hsl(var(--input)) !important;
+      background: hsl(var(--input)) !important;
+      position: relative !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      box-sizing: border-box !important;
+      transition: background-color 0.2s ease !important;
+      flex-shrink: 0 !important;
+    }
+    
+    [role="switch"][data-state="checked"],
+    button[role="switch"][data-state="checked"],
+    [data-radix-collection-item][role="switch"][data-state="checked"] {
+      background: hsl(var(--primary)) !important;
+      border-color: hsl(var(--primary)) !important;
+    }
+    
+    /* Switch thumb/indicator */
+    [role="switch"] > *,
+    button[role="switch"] > *,
+    [data-radix-collection-item][role="switch"] > * {
+      width: 1.25rem !important; /* 20px */
+      height: 1.25rem !important; /* 20px */
+      border-radius: 50% !important;
+      background: hsl(var(--background)) !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+      transition: transform 0.2s ease !important;
+      transform: translateX(0.125rem) !important; /* 2px offset when unchecked */
+    }
+    
+    [role="switch"][data-state="checked"] > *,
+    button[role="switch"][data-state="checked"] > *,
+    [data-radix-collection-item][role="switch"][data-state="checked"] > * {
+      transform: translateX(1.375rem) !important; /* 22px offset when checked */
+    }
+    
+    /* Ensure proper label alignment */
+    label[for="remember"],
+    label[for="delete-source"] {
       display: flex !important;
       align-items: center !important;
       gap: 0.5rem !important;
+    }
+    
+    /* Fix container alignment for all form controls */
+    .flex.items-center.space-x-2:has([role="checkbox"]),
+    .flex.items-start.space-x-2:has([role="checkbox"]),
+    .flex.items-center.space-x-2:has([role="radio"]),
+    .flex.items-start.space-x-2:has([role="radio"]),
+    .flex.items-center.space-x-2:has([role="switch"]),
+    .flex.items-start.space-x-2:has([role="switch"]) {
+      align-items: flex-start !important;
+    }
+    
+    .flex.items-center.space-x-2:has([role="checkbox"]) [role="checkbox"],
+    .flex.items-center.space-x-2:has([role="radio"]) [role="radio"],
+    .flex.items-center.space-x-2:has([role="switch"]) [role="switch"] {
+      margin-top: 0.125rem !important;
     }
   }
   
@@ -236,7 +349,9 @@
   @supports (-webkit-touch-callout: none) {
     /* iOS Safari specific styles - applies to both PWA and regular Safari */
     .ios-checkbox,
-    [role="checkbox"] {
+    [role="checkbox"],
+    button[role="checkbox"],
+    [data-radix-collection-item][role="checkbox"] {
       -webkit-tap-highlight-color: transparent;
       -webkit-appearance: none;
       appearance: none;
@@ -248,13 +363,79 @@
       max-height: 1rem;
       flex-shrink: 0;
       box-sizing: border-box;
+      vertical-align: top;
     }
     
     .ios-checkbox svg,
-    [role="checkbox"] svg {
+    [role="checkbox"] svg,
+    button[role="checkbox"] svg,
+    [data-radix-collection-item][role="checkbox"] svg {
       width: 1rem;
       height: 1rem;
       flex-shrink: 0;
+    }
+
+    /* iOS radio button fixes */
+    [role="radio"],
+    button[role="radio"],
+    [data-radix-collection-item][role="radio"] {
+      -webkit-tap-highlight-color: transparent;
+      -webkit-appearance: none;
+      appearance: none;
+      width: 1rem;
+      height: 1rem;
+      min-width: 1rem;
+      min-height: 1rem;
+      max-width: 1rem;
+      max-height: 1rem;
+      border-radius: 50%;
+      flex-shrink: 0;
+      box-sizing: border-box;
+      vertical-align: top;
+    }
+    
+    [role="radio"] svg,
+    button[role="radio"] svg,
+    [data-radix-collection-item][role="radio"] svg {
+      width: 0.5rem;
+      height: 0.5rem;
+      flex-shrink: 0;
+    }
+
+    /* iOS switch/toggle fixes */
+    [role="switch"],
+    button[role="switch"],
+    [data-radix-collection-item][role="switch"] {
+      -webkit-tap-highlight-color: transparent;
+      -webkit-appearance: none;
+      appearance: none;
+      width: 2.75rem;
+      height: 1.5rem;
+      min-width: 2.75rem;
+      min-height: 1.5rem;
+      border-radius: 0.75rem;
+      flex-shrink: 0;
+      box-sizing: border-box;
+      vertical-align: top;
+    }
+    
+    [role="switch"] > * {
+      width: 1.25rem;
+      height: 1.25rem;
+      border-radius: 50%;
+    }
+    
+    /* Fix container alignment for all form controls */
+    .flex.items-center.space-x-2:has([role="checkbox"]),
+    .flex.items-center.space-x-2:has([role="radio"]),
+    .flex.items-center.space-x-2:has([role="switch"]) {
+      align-items: flex-start;
+    }
+    
+    .flex.items-center.space-x-2:has([role="checkbox"]) [role="checkbox"],
+    .flex.items-center.space-x-2:has([role="radio"]) [role="radio"],
+    .flex.items-center.space-x-2:has([role="switch"]) [role="switch"] {
+      margin-top: 0.125rem;
     }
   }
 }
