@@ -112,6 +112,7 @@ export function SkillsSelector({ open, onClose, selectedSkills, onChange }: Skil
   const [addingSkill, setAddingSkill] = useState<string | null>(null)
   const [availableSkills, setAvailableSkills] = useState<SkillDefinition[]>(FALLBACK_SKILLS)
   const [isLoading, setIsLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('installed')
 
   useEffect(() => {
     if (open) {
@@ -226,7 +227,7 @@ export function SkillsSelector({ open, onClose, selectedSkills, onChange }: Skil
             </DialogDescription>
           </DialogHeader>
 
-          <Tabs defaultValue="installed" className="flex-1 flex flex-col overflow-hidden">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
             <TabsList className="mx-6 grid w-auto grid-cols-2 self-start">
               <TabsTrigger value="installed" className="gap-2">
                 <Package2 className="h-4 w-4" />
@@ -256,13 +257,7 @@ export function SkillsSelector({ open, onClose, selectedSkills, onChange }: Skil
                         </p>
                         <Button
                           type="button"
-                          onClick={() => {
-                            const tabsList = document.querySelector('[role="tablist"]')
-                            const marketplaceTab = tabsList?.querySelector('[value="marketplace"]')
-                            if (marketplaceTab instanceof HTMLElement) {
-                              marketplaceTab.click()
-                            }
-                          }}
+                          onClick={() => setActiveTab('marketplace')}
                         >
                           <Plus className="h-4 w-4 mr-2" />
                           Browse Skills
