@@ -254,7 +254,7 @@ export function TestSkillDialog({ skillName, skillParams, onClose }: TestSkillDi
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl w-[95vw] md:w-auto h-[90vh] md:h-[85vh] flex flex-col p-0">
+      <DialogContent className="max-w-3xl w-[95vw] md:w-auto max-h-[95vh] h-[min(90vh,700px)] flex flex-col p-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b">
           <DialogTitle>Test {skillName} Skill</DialogTitle>
           <DialogDescription>

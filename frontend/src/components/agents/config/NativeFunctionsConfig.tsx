@@ -142,7 +142,7 @@ export function NativeFunctionsConfig({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Native Functions & Fillers</DialogTitle>
           <DialogDescription>
@@ -150,7 +150,8 @@ export function NativeFunctionsConfig({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 mt-4">
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="space-y-4 mt-4">
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
@@ -295,8 +296,9 @@ export function NativeFunctionsConfig({
             </div>
           </div>
         </div>
+        </div>
 
-        <div className="flex justify-end gap-2 mt-6">
+        <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>

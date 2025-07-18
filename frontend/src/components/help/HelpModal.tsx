@@ -14,7 +14,7 @@ interface HelpModalProps {
 export function HelpModal({ open, onClose }: HelpModalProps) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-2xl">Help & Documentation</DialogTitle>
@@ -30,7 +30,7 @@ export function HelpModal({ open, onClose }: HelpModalProps) {
           </div>
         </DialogHeader>
 
-        <Tabs defaultValue="getting-started" className="h-full">
+        <Tabs defaultValue="getting-started" className="flex-1 flex flex-col min-h-0">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="getting-started">Getting Started</TabsTrigger>
             <TabsTrigger value="agent-config">Agent Configuration</TabsTrigger>

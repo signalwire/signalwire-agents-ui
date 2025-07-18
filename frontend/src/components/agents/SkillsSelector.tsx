@@ -219,7 +219,7 @@ export function SkillsSelector({ open, onClose, selectedSkills, onChange }: Skil
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0">
+        <DialogContent className="max-w-4xl max-h-[95vh] h-[min(85vh,800px)] flex flex-col p-0">
           <DialogHeader className="px-6 pt-6 pb-4">
             <DialogTitle>Skills Configuration</DialogTitle>
             <DialogDescription>
@@ -572,7 +572,7 @@ function SkillConfigDialog({ skill, skillDef, onSave, onClose }: SkillConfigDial
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Configure {skill.name}</DialogTitle>
           <DialogDescription>
@@ -580,7 +580,8 @@ function SkillConfigDialog({ skill, skillDef, onSave, onClose }: SkillConfigDial
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="space-y-4 py-4">
           {!skillDef.params || skillDef.params.length === 0 ? (
             <p className="text-sm text-muted-foreground">This skill has no configurable parameters.</p>
           ) : (
@@ -635,9 +636,10 @@ function SkillConfigDialog({ skill, skillDef, onSave, onClose }: SkillConfigDial
               </div>
             ))
           )}
+          </div>
         </div>
 
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 pt-4 border-t">
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
