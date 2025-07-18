@@ -1,6 +1,5 @@
-import { X } from 'lucide-react'
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,28 +15,19 @@ export function HelpModal({ open, onClose }: HelpModalProps) {
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-2xl">Help & Documentation</DialogTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="h-10 w-10 sm:h-8 sm:w-8 rounded-full -mr-2 sm:mr-0"
-            >
-              <X className="h-5 w-5 sm:h-4 sm:w-4" />
-              <span className="sr-only">Close</span>
-            </Button>
-          </div>
+          <DialogTitle className="text-2xl">Help & Documentation</DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="getting-started" className="flex-1 flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="getting-started">Getting Started</TabsTrigger>
-            <TabsTrigger value="agent-config">Agent Configuration</TabsTrigger>
-            <TabsTrigger value="skills">Skills</TabsTrigger>
-            <TabsTrigger value="advanced">Advanced Features</TabsTrigger>
-            <TabsTrigger value="tips">Tips & Best Practices</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto pb-2">
+            <TabsList className="inline-flex h-10 items-center justify-start rounded-md bg-muted p-1 text-muted-foreground min-w-max">
+              <TabsTrigger value="getting-started" className="whitespace-nowrap">Getting Started</TabsTrigger>
+              <TabsTrigger value="agent-config" className="whitespace-nowrap">Agent Config</TabsTrigger>
+              <TabsTrigger value="skills" className="whitespace-nowrap">Skills</TabsTrigger>
+              <TabsTrigger value="advanced" className="whitespace-nowrap">Advanced</TabsTrigger>
+              <TabsTrigger value="tips" className="whitespace-nowrap">Tips</TabsTrigger>
+            </TabsList>
+          </div>
 
           <ScrollArea className="h-[calc(80vh-180px)] mt-4">
             <TabsContent value="getting-started" className="space-y-4">
