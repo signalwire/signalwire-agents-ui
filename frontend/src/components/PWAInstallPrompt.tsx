@@ -88,8 +88,8 @@ export function PWAInstallPrompt() {
             {isIOS ? (
               <p className="text-xs text-muted-foreground mt-1">
                 Tap <span className="inline-flex items-center mx-1">
-                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M4 15v4c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-4M12 3l-4 4h3v8h2V7h3l-4-4z"/>
                   </svg>
                 </span> in Safari, then "Add to Home Screen"
               </p>
