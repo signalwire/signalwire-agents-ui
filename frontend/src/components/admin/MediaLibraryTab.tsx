@@ -42,12 +42,36 @@ export function MediaLibraryTab() {
       const response = await apiClient.get('/settings/media')
       setConfig(response.data.settings)
       setStats(response.data.stats)
-    } catch (error) {
-      toast({
-        title: 'Error loading settings',
-        description: 'Failed to load media library settings',
-        variant: 'destructive'
+    } catch (error: any) {
+      console.error('Error loading media settings:', error)
+      
+      // Set default config to allow the component to render
+      setConfig({
+        max_audio_size_mb: 50,
+        max_video_size_mb: 200,
+        max_uploads_per_hour: 10,
+        max_imports_per_hour: 20,
+        allowed_audio_types: ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm'],
+        allowed_video_types: ['video/mp4', 'video/webm'],
+        auto_cleanup_days: 90,
+        enable_virus_scan: false,
+        max_total_storage_gb: 50
       })
+      setStats({
+        total_files: 0,
+        total_size: 0,
+        total_size_gb: 0,
+        unused_files: 0
+      })
+      
+      // Only show error toast for non-404 errors (404 is expected when no settings exist yet)
+      if (error.response?.status !== 404) {
+        toast({
+          title: 'Error loading settings',
+          description: 'Using default media library settings',
+          variant: 'destructive'
+        })
+      }
     }
   }
 
@@ -88,7 +112,13 @@ export function MediaLibraryTab() {
   }
 
   if (!config) {
-    return <div>Loading...</div>
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="text-center">
+          <div className="text-sm text-muted-foreground">Loading media library settings...</div>
+        </div>
+      </div>
+    )
   }
 
   const audioTypes = [
@@ -304,6 +334,14 @@ export function MediaLibraryTab() {
                 <p className="text-2xl font-semibold">{stats.unused_files}</p>
               </div>
             </div>
+            {stats.total_files === 0 && (
+              <div className="mt-6 text-center p-6 bg-muted rounded-lg">
+                <p className="text-muted-foreground">No media files uploaded yet</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Go to the <strong>Media Library</strong> page to upload your first files
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

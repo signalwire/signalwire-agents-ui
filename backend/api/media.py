@@ -636,20 +636,48 @@ async def get_media_settings_endpoint(
     total_size = 0
     file_count = 0
     
-    for root, dirs, files in os.walk(MEDIA_BASE_PATH):
-        for file in files:
-            file_count += 1
-            total_size += os.path.getsize(os.path.join(root, file))
+    # Ensure media directory exists and get stats safely
+    try:
+        if MEDIA_BASE_PATH.exists():
+            for root, dirs, files in os.walk(MEDIA_BASE_PATH):
+                for file in files:
+                    try:
+                        file_path = os.path.join(root, file)
+                        if os.path.isfile(file_path):
+                            file_count += 1
+                            total_size += os.path.getsize(file_path)
+                    except (OSError, FileNotFoundError):
+                        # Skip files that can't be accessed
+                        continue
+        else:
+            # Create media directory if it doesn't exist
+            MEDIA_BASE_PATH.mkdir(parents=True, exist_ok=True)
+            (MEDIA_BASE_PATH / "audio").mkdir(exist_ok=True)
+            (MEDIA_BASE_PATH / "video").mkdir(exist_ok=True)
+    except Exception as e:
+        # Log the error but don't fail the request
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Error accessing media directory: {e}")
+        # Continue with zero stats
     
     # Get unused files count
-    result = await db.execute(
-        text("""
-        SELECT COUNT(*) FROM media_files m
-        LEFT JOIN media_usage u ON m.id = u.media_file_id
-        WHERE u.media_file_id IS NULL
-        """)
-    )
-    unused_count = result.scalar() or 0
+    unused_count = 0
+    try:
+        result = await db.execute(
+            text("""
+            SELECT COUNT(*) FROM media_files m
+            LEFT JOIN media_usage u ON m.id = u.media_file_id
+            WHERE u.media_file_id IS NULL
+            """)
+        )
+        unused_count = result.scalar() or 0
+    except Exception as e:
+        # Log the error but don't fail the request
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Error querying unused files: {e}")
+        # Continue with zero count
     
     return {
         "settings": settings,

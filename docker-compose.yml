@@ -25,6 +25,7 @@ services:
     restart: unless-stopped
     ports:
       - "8430:8430"
+      - "8429:8429"
     environment:
       DATABASE_URL: postgresql://agent_builder:${DB_PASSWORD:-changeme}@db:5432/agent_builder
       JWT_SECRET: ${JWT_SECRET:-change-this-secret-key}

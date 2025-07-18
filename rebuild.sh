@@ -31,4 +31,8 @@ if [ $? -ne 0 ] ; then
     echo "ERROR: The build did not work.";
 else
     echo "✅ Done! Containers rebuilt and running."
+    echo ""
+    echo "🌐 Access the application at:"
+    echo "   • HTTP:  http://localhost:8429  (no SSL warnings)"
+    echo "   • HTTPS: https://localhost:8430 (self-signed cert)"
 fi
