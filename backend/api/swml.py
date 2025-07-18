@@ -39,6 +39,7 @@ def verify_agent_auth(credentials: HTTPBasicCredentials, agent_config: dict) -> 
 
 
 @router.get("/agents/{agent_id}/swml")
+@router.post("/agents/{agent_id}/swml")
 @limiter.limit(f"{settings.rate_limit_swml}/hour")
 async def get_agent_swml(
     request: Request,
