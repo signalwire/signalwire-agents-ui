@@ -13,12 +13,24 @@ logger = logging.getLogger(__name__)
 
 
 def get_base_url(request=None) -> str:
-    """Get the base URL from request or fall back to settings."""
+    """Get the base URL from request or fall back to settings.
+    
+    When behind a proxy (detected by X-Forwarded headers), use the Host header as-is
+    since the proxy handles port mapping. For direct connections, use our configured
+    hostname and port.
+    """
     if request:
-        host = request.headers.get('host', f"{settings.hostname}:{settings.port}")
-        scheme = request.headers.get('x-forwarded-proto', 'https')
-        return f"{scheme}://{host}"
+        # Check if we're behind a proxy by looking for forwarded headers
+        if 'x-forwarded-proto' in request.headers or 'x-forwarded-host' in request.headers:
+            # Behind a proxy - use the Host header as-is (proxy handles port mapping)
+            host = request.headers.get('host', settings.hostname)
+            scheme = request.headers.get('x-forwarded-proto', 'https')
+            return f"{scheme}://{host}"
+        else:
+            # Direct connection - use our configured settings
+            return f"https://{settings.hostname}:{settings.port}"
     else:
+        # No request context - use configured settings
         return f"https://{settings.hostname}:{settings.port}"
 
 

@@ -80,12 +80,22 @@ settings = Settings()
 
 
 def get_swml_url(agent_id: str, request=None) -> str:
-    """Get the public SWML URL for an agent."""
+    """Get the public SWML URL for an agent.
+    
+    When behind a proxy (detected by X-Forwarded headers), use the Host header as-is
+    since the proxy handles port mapping. For direct connections, use our configured
+    hostname and port.
+    """
     if request:
-        # Use the actual host from the request
-        host = request.headers.get('host', f"{settings.hostname}:{settings.port}")
-        scheme = request.headers.get('x-forwarded-proto', 'https')
-        return f"{scheme}://{host}/agents/{agent_id}/swml"
+        # Check if we're behind a proxy by looking for forwarded headers
+        if 'x-forwarded-proto' in request.headers or 'x-forwarded-host' in request.headers:
+            # Behind a proxy - use the Host header as-is (proxy handles port mapping)
+            host = request.headers.get('host', settings.hostname)
+            scheme = request.headers.get('x-forwarded-proto', 'https')
+            return f"{scheme}://{host}/agents/{agent_id}/swml"
+        else:
+            # Direct connection - use our configured settings
+            return f"https://{settings.hostname}:{settings.port}/agents/{agent_id}/swml"
     else:
         # Fallback to configured values for backward compatibility
         return f"https://{settings.hostname}:{settings.port}/agents/{agent_id}/swml"
