@@ -44,15 +44,22 @@ async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=
     if agent_type == 'bedrock':
         # Get Bedrock-specific parameters
         voice_id = agent_config.get('voice_id', 'tiffany')
+        temperature = agent_config.get('temperature', 0.7)
+        top_p = agent_config.get('top_p', 0.9)
+        max_tokens = agent_config.get('max_tokens', 1024)
+        
+        # Log Bedrock parameters for debugging
+        logger.info(f"SWML Generator - Bedrock agent config: voice_id={voice_id}, temperature={temperature}, top_p={top_p}, max_tokens={max_tokens}")
+        logger.info(f"SWML Generator - Raw config values: temperature={agent_config.get('temperature')}, top_p={agent_config.get('top_p')}")
         
         # Note: BedrockAgent constructor accepts these params but they're placed
         # in the prompt during SWML generation, not in params
         agent = BedrockAgent(
             name=agent_name,
             voice_id=voice_id,
-            temperature=agent_config.get('temperature', 0.7),
-            top_p=agent_config.get('top_p', 0.9),
-            max_tokens=agent_config.get('max_tokens', 1024)
+            temperature=temperature,
+            top_p=top_p,
+            max_tokens=max_tokens
         )
         
         # Bedrock doesn't support recording yet - log if requested

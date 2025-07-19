@@ -35,7 +35,7 @@ import { helpContent } from '@/lib/helpContent'
 import { LLMParamsCard } from '@/components/agents/LLMParamsCard'
 import { LanguagesConfig } from '@/components/agents/config/LanguagesConfig'
 import { AgentTypeSelector } from '@/components/agents/AgentTypeSelector'
-import { BedrockVoiceSelector } from '@/components/agents/BedrockVoiceSelector'
+import { BedrockParamsCard } from '@/components/agents/BedrockParamsCard'
 import { BedrockParamsDialog } from '@/components/agents/BedrockParamsDialog'
 
 interface LanguageConfig {
@@ -68,6 +68,9 @@ export function AgentBuilderPage() {
   
   // Bedrock-specific parameters
   const [bedrockVoiceId, setBedrockVoiceId] = useState<string>('tiffany')
+  const [bedrockTemperature, setBedrockTemperature] = useState<number>(0.7)
+  const [bedrockTopP, setBedrockTopP] = useState<number>(0.9)
+  const [bedrockMaxTokens, setBedrockMaxTokens] = useState<number>(1024)
   
   // New configuration states
   const [hintsConfig, setHintsConfig] = useState<{ simple_hints: string[], pattern_hints: any[] }>({
@@ -188,6 +191,9 @@ export function AgentBuilderPage() {
       // Reset Bedrock-specific parameters if it's a Bedrock agent
       if (agent.agent_type === 'bedrock' || agent.config.agent_type === 'bedrock') {
         setBedrockVoiceId(agent.config.voice_id || 'tiffany')
+        setBedrockTemperature(agent.config.temperature || 0.7)
+        setBedrockTopP(agent.config.top_p || 0.9)
+        setBedrockMaxTokens(agent.config.max_tokens || 1024)
       }
       
       // Reset languages from agent config
@@ -315,6 +321,9 @@ export function AgentBuilderPage() {
   const setPostPromptLLMParamsWithTracking = trackChange(setPostPromptLLMParams)
   const setLanguagesWithTracking = trackChange(setLanguages)
   const setBedrockVoiceIdWithTracking = trackChange(setBedrockVoiceId)
+  const setBedrockTemperatureWithTracking = trackChange(setBedrockTemperature)
+  const setBedrockTopPWithTracking = trackChange(setBedrockTopP)
+  const setBedrockMaxTokensWithTracking = trackChange(setBedrockMaxTokens)
 
   // Fetch settings for voice options
   const { } = useQuery({
@@ -358,6 +367,9 @@ export function AgentBuilderPage() {
       // Load Bedrock-specific parameters if it's a Bedrock agent
       if (agent.agent_type === 'bedrock' || agent.config.agent_type === 'bedrock') {
         setBedrockVoiceId(agent.config.voice_id || 'tiffany')
+        setBedrockTemperature(agent.config.temperature || 0.7)
+        setBedrockTopP(agent.config.top_p || 0.9)
+        setBedrockMaxTokens(agent.config.max_tokens || 1024)
       }
 
       setPromptSections(agent.config.prompt_sections)
@@ -516,6 +528,9 @@ export function AgentBuilderPage() {
         // For Bedrock agents, include Bedrock-specific parameters
         ...(agentType === 'bedrock' ? {
           voice_id: bedrockVoiceId,
+          temperature: bedrockTemperature,
+          top_p: bedrockTopP,
+          max_tokens: bedrockMaxTokens,
         } : {
           // Regular agent parameters
           // New multi-language support
@@ -584,13 +599,23 @@ export function AgentBuilderPage() {
       }
 
       const config: AgentConfig = {
-        // Legacy single language fields for backward compatibility
-        voice: firstLanguage.voice,
-        language: firstLanguage.code,
-        engine: firstLanguage.engine,
-        model: firstLanguage.model,
-        // New multi-language support
-        languages: languages,
+        agent_type: agentType,
+        // Always include voice and language for backward compatibility
+        voice: agentType === 'bedrock' ? bedrockVoiceId : firstLanguage.voice,
+        language: agentType === 'bedrock' ? 'en-US' : firstLanguage.code,
+        engine: agentType === 'bedrock' ? 'bedrock' : firstLanguage.engine,
+        model: agentType === 'bedrock' ? undefined : firstLanguage.model,
+        // For Bedrock agents, include Bedrock-specific parameters
+        ...(agentType === 'bedrock' ? {
+          voice_id: bedrockVoiceId,
+          temperature: bedrockTemperature,
+          top_p: bedrockTopP,
+          max_tokens: bedrockMaxTokens,
+        } : {
+          // Regular agent parameters
+          // New multi-language support
+          languages: languages,
+        }),
         prompt_sections: promptSections,
         skills: skills,
         params: params,
@@ -659,6 +684,9 @@ export function AgentBuilderPage() {
         // For Bedrock agents, include Bedrock-specific parameters
         ...(agentType === 'bedrock' ? {
           voice_id: bedrockVoiceId,
+          temperature: bedrockTemperature,
+          top_p: bedrockTopP,
+          max_tokens: bedrockMaxTokens,
         } : {
           // Regular agent parameters
           // New multi-language support
@@ -696,6 +724,8 @@ export function AgentBuilderPage() {
       console.log('Updating agent with LLM params:', { promptLLMParams, postPromptLLMParams });
       console.log('Saving agent with post_prompt_config:', postPromptConfig);
       console.log('Saving agent with knowledge_base_config:', knowledgeBaseConfig);
+      console.log('Updating Bedrock agent config:', { agentType, bedrockVoiceId, bedrockTemperature, bedrockTopP, bedrockMaxTokens });
+      console.log('Final config being sent:', config);
       return agentsApi.update(id!, {
         name: data.name,
         description: data.description,
@@ -862,11 +892,17 @@ export function AgentBuilderPage() {
           />
         )}
 
-        {/* Bedrock Voice Selection - Only for Bedrock agents */}
+        {/* Bedrock Configuration - Only for Bedrock agents */}
         {agentType === 'bedrock' && (
-          <BedrockVoiceSelector
-            value={bedrockVoiceId}
-            onChange={setBedrockVoiceIdWithTracking}
+          <BedrockParamsCard
+            voiceId={bedrockVoiceId}
+            temperature={bedrockTemperature}
+            topP={bedrockTopP}
+            maxTokens={bedrockMaxTokens}
+            onVoiceChange={setBedrockVoiceIdWithTracking}
+            onTemperatureChange={setBedrockTemperatureWithTracking}
+            onTopPChange={setBedrockTopPWithTracking}
+            onMaxTokensChange={setBedrockMaxTokensWithTracking}
           />
         )}
 

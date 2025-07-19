@@ -307,6 +307,10 @@ async def update_agent(
         config_dict = agent_data.config.model_dump()
         agent_type = config_dict.get('agent_type', agent.agent_type or 'regular')
         
+        # Log Bedrock parameters for debugging
+        if agent_type == 'bedrock':
+            logger.info(f"Bedrock agent config received - voice_id: {config_dict.get('voice_id')}, temperature: {config_dict.get('temperature')}, top_p: {config_dict.get('top_p')}, max_tokens: {config_dict.get('max_tokens')}")
+        
         # Filter out Bedrock-incompatible fields if it's a Bedrock agent
         if agent_type == 'bedrock':
             # Remove fields that Bedrock doesn't support
