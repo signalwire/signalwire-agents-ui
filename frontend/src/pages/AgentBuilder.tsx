@@ -314,6 +314,7 @@ export function AgentBuilderPage() {
   const setPromptLLMParamsWithTracking = trackChange(setPromptLLMParams)
   const setPostPromptLLMParamsWithTracking = trackChange(setPostPromptLLMParams)
   const setLanguagesWithTracking = trackChange(setLanguages)
+  const setBedrockVoiceIdWithTracking = trackChange(setBedrockVoiceId)
 
   // Fetch settings for voice options
   const { } = useQuery({
@@ -865,7 +866,7 @@ export function AgentBuilderPage() {
         {agentType === 'bedrock' && (
           <BedrockVoiceSelector
             value={bedrockVoiceId}
-            onChange={setBedrockVoiceId}
+            onChange={setBedrockVoiceIdWithTracking}
           />
         )}
 
