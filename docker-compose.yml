@@ -28,6 +28,7 @@ services:
       - "8429:8429"
     environment:
       DATABASE_URL: postgresql://agent_builder:${DB_PASSWORD:-changeme}@db:5432/agent_builder
+      DB_PASSWORD: ${DB_PASSWORD:-changeme}
       JWT_SECRET: ${JWT_SECRET:-change-this-secret-key}
       HOSTNAME: ${HOSTNAME:-localhost}
       PORT: ${PORT:-8430}
