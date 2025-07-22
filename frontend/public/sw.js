@@ -1,4 +1,4 @@
-const CACHE_NAME = 'signalwire-agent-builder-v1';
+const CACHE_NAME = 'signalwire-agent-builder-v2';
 const STATIC_CACHE = [
   '/',
   '/manifest.json',
@@ -54,7 +54,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For API calls, always try network first
+  // Skip SSE streams and WebSocket connections - let them pass through directly
+  if (url.pathname.includes('/stream') || url.pathname.includes('/ws') || 
+      request.headers.get('accept') === 'text/event-stream' ||
+      request.headers.get('cache-control') === 'no-cache') {
+    return; // Let the browser handle these directly
+  }
+
+  // For other API calls, always try network first
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(request)
