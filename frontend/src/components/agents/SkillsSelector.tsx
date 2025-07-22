@@ -52,6 +52,7 @@ interface SkillsSelectorProps {
   onClose: () => void
   selectedSkills: Skill[]
   onChange: (skills: Skill[]) => void
+  agentType?: 'regular' | 'bedrock'
 }
 
 // Fallback skills if API fails
@@ -104,7 +105,7 @@ function convertParametersToParams(parameters: Record<string, any>): Array<any> 
   }))
 }
 
-export function SkillsSelector({ open, onClose, selectedSkills, onChange }: SkillsSelectorProps) {
+export function SkillsSelector({ open, onClose, selectedSkills, onChange, agentType = 'regular' }: SkillsSelectorProps) {
   const [localSkills, setLocalSkills] = useState<Skill[]>(selectedSkills)
   const [searchTerm, setSearchTerm] = useState('')
   const [configuringSkill, setConfiguringSkill] = useState<{ skill: Skill; index: number } | null>(null)
@@ -473,6 +474,7 @@ export function SkillsSelector({ open, onClose, selectedSkills, onChange }: Skil
             setConfiguringSkill(null)
           }}
           onClose={() => setConfiguringSkill(null)}
+          agentType={agentType}
         />
       )}
 
@@ -486,6 +488,7 @@ export function SkillsSelector({ open, onClose, selectedSkills, onChange }: Skil
             setAddingSkill(null)
           }}
           onClose={() => setAddingSkill(null)}
+          agentType={agentType}
         />
       )}
 
@@ -506,9 +509,10 @@ interface SkillConfigDialogProps {
   skillDef: SkillDefinition
   onSave: (params: Record<string, any>) => void
   onClose: () => void
+  agentType?: 'regular' | 'bedrock'
 }
 
-function SkillConfigDialog({ skill, skillDef, onSave, onClose }: SkillConfigDialogProps) {
+function SkillConfigDialog({ skill, skillDef, onSave, onClose, agentType = 'regular' }: SkillConfigDialogProps) {
   const [params, setParams] = useState<Record<string, any>>(skill.params || {})
   const [envVarStatus, setEnvVarStatus] = useState<Record<string, any>>({})
 
@@ -595,6 +599,7 @@ function SkillConfigDialog({ skill, skillDef, onSave, onClose }: SkillConfigDial
                       [param.name]: value
                     })}
                     skillType={skill.name}
+                    agentType={agentType}
                   />
                 ) : (
                   <>

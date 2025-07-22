@@ -17,6 +17,7 @@ interface FillersEditorProps {
   value: any
   onChange: (value: any) => void
   skillType?: string
+  agentType?: 'regular' | 'bedrock'
 }
 
 interface Fillers {
@@ -67,7 +68,7 @@ const DEFAULT_FILLERS: Record<string, string[]> = {
   ]
 }
 
-export function FillersEditor({ value, onChange, skillType = 'default' }: FillersEditorProps) {
+export function FillersEditor({ value, onChange, skillType = 'default', agentType = 'regular' }: FillersEditorProps) {
   const [activeTab, setActiveTab] = useState('default')
   const [showAddLanguage, setShowAddLanguage] = useState(false)
   const [newLanguageCode, setNewLanguageCode] = useState('')
@@ -171,6 +172,24 @@ export function FillersEditor({ value, onChange, skillType = 'default' }: Filler
     }))
   }
   
+  // If agent type is Bedrock, show disabled state
+  if (agentType === 'bedrock') {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <Label>SWAIG Fillers</Label>
+        </div>
+        
+        <Card className="p-4">
+          <div className="text-center py-8 text-muted-foreground">
+            <p className="mb-2">Fillers are not supported for Bedrock agents</p>
+            <p className="text-sm">Bedrock agents handle conversation flow internally and don't use custom fillers.</p>
+          </div>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">

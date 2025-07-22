@@ -1213,6 +1213,7 @@ export function AgentBuilderPage() {
           onClose={() => setShowSkillsSelector(false)}
           selectedSkills={skills}
           onChange={setSkillsWithTracking}
+          agentType={agentType}
         />
 
         {agentType === 'bedrock' ? (
