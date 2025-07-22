@@ -91,8 +91,7 @@ RUN mkdir -p /var/log/supervisor /var/log/nginx /app/logs /app/data/knowledge_ba
 # Set Python path
 ENV PYTHONPATH=/app
 
-# Set database password env var for entrypoint
-ENV DB_PASSWORD=${DB_PASSWORD:-changeme}
+# DB_PASSWORD will be set by docker-compose at runtime
 
 # Copy entrypoint script
 COPY scripts/app-entrypoint.sh /app/app-entrypoint.sh

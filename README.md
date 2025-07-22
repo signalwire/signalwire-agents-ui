@@ -41,10 +41,20 @@ A mobile-first, web-based interface for building and managing SignalWire AI agen
 
 ## Quick Start
 
+### For Linux/macOS:
+
 1. Copy the environment file and configure:
 ```bash
 cp .env.example .env
 # Edit .env with your settings
+```
+
+### For Windows:
+
+1. Copy the environment file and configure:
+```cmd
+copy .env.example .env
+# Edit .env with your settings using notepad or your preferred editor
 ```
 
 2. Ensure certificates are in place:
@@ -157,11 +167,23 @@ signalwire-agents-ui/
 ### Rebuilding the Application
 
 To rebuild after making changes:
+
+**Linux/macOS:**
 ```bash
 ./rebuild.sh
 ```
 
-This script handles:
+**Windows (Command Prompt):**
+```cmd
+rebuild.bat
+```
+
+**Windows (PowerShell):**
+```powershell
+.\rebuild.ps1
+```
+
+These scripts handle:
 - Detecting SDK changes and cache busting
 - Building frontend assets
 - Rebuilding Docker images
