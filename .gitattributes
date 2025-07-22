@@ -1,0 +1,19 @@
+# Ensure shell scripts always have Unix line endings (LF)
+*.sh text eol=lf
+
+# Ensure SQL files have proper line endings
+*.sql text eol=lf
+
+# Let Git handle other text files normally
+* text=auto
+
+# Ensure certain files are treated as binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg text
+*.pdf binary
+*.zip binary
+*.tar.gz binary 

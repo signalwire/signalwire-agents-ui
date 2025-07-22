@@ -93,9 +93,10 @@ ENV PYTHONPATH=/app
 
 # DB_PASSWORD will be set by docker-compose at runtime
 
-# Copy entrypoint script
+# Copy entrypoint script and fix Windows line endings
 COPY scripts/app-entrypoint.sh /app/app-entrypoint.sh
-RUN chmod +x /app/app-entrypoint.sh
+RUN sed -i 's/\r$//' /app/app-entrypoint.sh /app/scripts/start-backend.sh && \
+    chmod +x /app/app-entrypoint.sh /app/scripts/start-backend.sh
 
 # Expose port
 EXPOSE 8430

@@ -54,10 +54,19 @@ docker-compose up --build -d
 ### Common Issues
 
 #### 1. Line Ending Problems
-If you encounter "file not found" errors with scripts:
+If you encounter "exec /app/app-entrypoint.sh: no such file or directory" errors:
+
+**Automatic Fix (Recommended):**
+The Dockerfile now automatically converts Windows line endings during build:
+```dockerfile
+RUN sed -i 's/\r$//' /app/app-entrypoint.sh /app/scripts/start-backend.sh
+```
+
+**Manual Fix (if needed):**
 ```powershell
 # Convert line endings using PowerShell
-(Get-Content .\rebuild.ps1 -Raw) -replace "`r`n", "`n" | Set-Content .\rebuild.ps1 -NoNewline
+(Get-Content .\scripts\app-entrypoint.sh -Raw) -replace "`r`n", "`n" | Set-Content .\scripts\app-entrypoint.sh -NoNewline
+(Get-Content .\scripts\start-backend.sh -Raw) -replace "`r`n", "`n" | Set-Content .\scripts\start-backend.sh -NoNewline
 ```
 
 #### 2. Docker Volume Issues
