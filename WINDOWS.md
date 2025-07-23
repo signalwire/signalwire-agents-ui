@@ -110,6 +110,16 @@ The new SQL-based initialization script is more reliable on Windows:
 - Cross-platform compatibility
 - Proper error handling with transactions
 
+#### PWA Icon Issues
+If you see "Download error or resource isn't a valid image" for PWA icons:
+1. **Automatic Fix**: The manifest now uses SVG icons as fallbacks
+2. **Manual Fix**: Clear browser cache and reload
+3. **Complete Reset**: 
+   ```cmd
+   docker-compose down -v
+   docker-compose up --build -d
+   ```
+
 ## Performance Tips
 
 ### Docker Performance on Windows
