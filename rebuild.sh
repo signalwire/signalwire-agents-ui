@@ -8,12 +8,12 @@ BUILD_VERSION=$(date +%s)
 echo "🏷️  Build version: $BUILD_VERSION"
 
 # If local SDK exists, use timestamp-based cache busting
-if [ -d "signalwire-agents" ]; then
+if [ -d "signalwire-python" ]; then
     # Use cross-platform stat command (macOS uses -f %m, Linux uses -c %Y)
     if [[ "$OSTYPE" == "darwin"* ]]; then
-        SDK_MTIME=$(find signalwire-agents -name "*.py" -type f -exec stat -f '%m' {} \; | sort -n | tail -1)
+        SDK_MTIME=$(find signalwire-python -name "*.py" -type f -exec stat -f '%m' {} \; | sort -n | tail -1)
     else
-        SDK_MTIME=$(find signalwire-agents -name "*.py" -type f -exec stat -c '%Y' {} \; | sort -n | tail -1)
+        SDK_MTIME=$(find signalwire-python -name "*.py" -type f -exec stat -c '%Y' {} \; | sort -n | tail -1)
     fi
     echo "🔍 SDK latest change timestamp: $SDK_MTIME"
     BUILD_VERSION=$BUILD_VERSION docker-compose build --build-arg SDK_CACHE_BUST=$SDK_MTIME app

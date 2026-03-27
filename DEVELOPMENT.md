@@ -18,7 +18,7 @@ Building a mobile-first, web-based interface for creating and managing SignalWir
 - Created project directory structure
 - Dockerfile with proper layering:
   - System deps + Node.js from NodeSource
-  - Conditional signalwire-agents installation (local if present, pip otherwise)
+  - Conditional signalwire-python installation (local if present, pip otherwise)
   - Python/Node dependencies cached separately
   - Frontend build layer
   - Backend code layer

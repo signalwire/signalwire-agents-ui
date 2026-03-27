@@ -61,7 +61,7 @@ This is the SignalWire Agent Builder - a real, production application for buildi
 │   │   └── public/
 │   ├── docker/                    # Docker configuration files
 │   ├── scripts/                   # Utility scripts
-│   ├── signalwire-agents/         # SignalWire Agents SDK (submodule/subdirectory)
+│   ├── signalwire-python/         # SignalWire Python SDK (submodule/subdirectory)
 │   │   └── signalwire_agents/     # The actual SDK package
 │   │       └── skills/            # SDK skills including native_vector_search.py
 │   ├── docker-compose.yml
@@ -71,7 +71,7 @@ This is the SignalWire Agent Builder - a real, production application for buildi
 ### Key File Locations:
 - Backend code: `/usr/local/home/devuser/src/signalwire-agents-ui/signalwire-agents-ui/backend/`
 - Frontend code: `/usr/local/home/devuser/src/signalwire-agents-ui/signalwire-agents-ui/frontend/`
-- SignalWire SDK: `/usr/local/home/devuser/src/signalwire-agents-ui/signalwire-agents-ui/signalwire-agents/`
+- SignalWire SDK: `/usr/local/home/devuser/src/signalwire-agents-ui/signalwire-agents-ui/signalwire-python/`
 - Docker compose: `/usr/local/home/devuser/src/signalwire-agents-ui/signalwire-agents-ui/docker-compose.yml`
 
 **DO NOT** get confused by similar directory names elsewhere in the src directory!
