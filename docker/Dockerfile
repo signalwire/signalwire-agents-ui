@@ -24,11 +24,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
 # Create app directory
 WORKDIR /app
 
-# Layer 2a: Install signalwire-agents (local or from pip)
+# Layer 2a: Install signalwire-python (local or from pip)
 # Use build arg to bust cache when SDK changes
 ARG SDK_CACHE_BUST=1
-# Copy signalwire-agents if it exists locally
-COPY signalwire-agents* ./signalwire-agents/
+# Copy signalwire-python if it exists locally
+COPY signalwire-python* ./signalwire-python/
 
 # Set python3.11 as default python3
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
@@ -36,14 +36,14 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
 # Upgrade pip and install build tools
 RUN python3.11 -m pip install --upgrade pip setuptools wheel
 
-# Install signalwire-agents - use local if present, otherwise from pip
-RUN if [ -d "./signalwire-agents" ]; then \
-        echo "Installing local signalwire-agents with search-all..." && \
-        python3.11 -m pip install --no-cache-dir -e "./signalwire-agents[search-all]" && \
+# Install signalwire-python - use local if present, otherwise from pip
+RUN if [ -d "./signalwire-python" ]; then \
+        echo "Installing local signalwire-python with search-all..." && \
+        python3.11 -m pip install --no-cache-dir -e "./signalwire-python[search-all]" && \
         python3.11 -m pip install --no-cache-dir signalwire-pom==2.7.1; \
     else \
-        echo "Installing signalwire-agents from pip with search-all..." && \
-        python3.11 -m pip install --no-cache-dir "signalwire-agents[search-all]"; \
+        echo "Installing signalwire-python from pip with search-all..." && \
+        python3.11 -m pip install --no-cache-dir "signalwire-python[search-all]"; \
     fi
 
 # Download spaCy language model for NLP features
