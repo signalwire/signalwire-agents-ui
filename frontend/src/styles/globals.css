@@ -7,7 +7,7 @@
     /* SignalWire Light Theme — surfaces from design system */
     --background: 210 33% 98.8%;       /* #FAFBFC page */
     --foreground: 40 6% 10%;           /* #1A1A18 default */
-    --card: 210 20% 95.7%;             /* #F3F4F6 surface */
+    --card: 0 0% 100%;                  /* #FFFFFF white — clear contrast against #FAFBFC page */
     --card-foreground: 40 6% 10%;      /* #1A1A18 */
     --popover: 210 33% 98.8%;          /* #FAFBFC */
     --popover-foreground: 40 6% 10%;   /* #1A1A18 */
@@ -16,7 +16,7 @@
     --secondary: 210 20% 95.7%;        /* #F3F4F6 surface */
     --secondary-foreground: 40 4% 22%; /* #3A3A38 */
     --muted: 220 14% 92.2%;            /* #E8EAF0 raised */
-    --muted-foreground: 40 2% 45%;     /* #737371 */
+    --muted-foreground: 40 3% 38%;     /* #625f5c — darker for WCAG AA on light bg */
     --accent: 340 93% 56%;             /* #F72A72 Fuchsia accent */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;          /* #ef4444 */

@@ -158,9 +158,9 @@ export function SkillsMarketplacePage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div>
-              <h1 className="text-2xl font-bold text-heading-primary">Skills Marketplace</h1>
-              <p className="text-muted-foreground">
-                Browse and manage skills for your AI agents
+              <h1 className="text-xl sm:text-2xl font-bold">Skills Marketplace</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Browse and manage skills
               </p>
             </div>
             <HelpTooltip content={helpContent.marketplace.overview} />

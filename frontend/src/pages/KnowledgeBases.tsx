@@ -134,12 +134,12 @@ export function KnowledgeBasesPage() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Knowledge Bases</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-xl sm:text-2xl font-bold">Knowledge Bases</h1>
+            <p className="text-sm text-muted-foreground mt-1">
               Create and manage reusable knowledge bases for your agents
             </p>
           </div>
-          <Button onClick={() => navigate('/knowledge-bases/new')}>
+          <Button onClick={() => navigate('/knowledge-bases/new')} className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             New Knowledge Base
           </Button>
@@ -184,7 +184,7 @@ export function KnowledgeBasesPage() {
             {filteredKnowledgeBases.map((kb) => (
               <Card
                 key={kb.id}
-                className="cursor-pointer hover:shadow-lg transition-shadow"
+                className="cursor-pointer hover:shadow-md transition-shadow"
                 onClick={() => navigate(`/knowledge-bases/${kb.id}`)}
               >
                 <CardHeader className="pb-4">

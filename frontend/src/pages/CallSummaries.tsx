@@ -35,10 +35,10 @@ export function CallSummariesPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-heading-primary">
+            <h1 className="text-xl sm:text-2xl font-bold">
               Call Summaries
             </h1>
-            <p className="text-sm sm:text-base text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {agent?.name || 'Loading...'}
             </p>
           </div>

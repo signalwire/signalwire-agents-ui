@@ -90,12 +90,12 @@ export function MainLayout({ children }: MainLayoutProps) {
                 variant="ghost"
                 size="icon"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden h-8 w-8"
+                className="md:hidden h-10 w-10"
               >
                 {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
                 <span className="sr-only">Toggle menu</span>
               </Button>
-              <span className="text-xs sm:text-sm text-muted-foreground hidden lg:inline truncate max-w-[100px] sm:max-w-none">
+              <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline truncate max-w-[120px]">
                 {tokenName}
               </span>
               <ChangeIndicator />
@@ -103,7 +103,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowHelp(true)}
-                className="h-8 w-8 sm:h-9 sm:w-9"
+                className="h-10 w-10"
               >
                 <HelpCircle className="h-4 w-4" />
                 <span className="sr-only">Help</span>
@@ -113,7 +113,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                 variant="ghost"
                 size="icon"
                 onClick={logout}
-                className="h-8 w-8 sm:h-9 sm:w-9"
+                className="h-10 w-10"
               >
                 <LogOut className="h-4 w-4" />
                 <span className="sr-only">Logout</span>

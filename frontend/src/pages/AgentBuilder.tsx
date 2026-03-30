@@ -772,7 +772,7 @@ export function AgentBuilderPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="min-w-0">
-            <h1 className="text-lg sm:text-2xl font-bold text-heading-primary whitespace-nowrap">
+            <h1 className="text-lg sm:text-2xl font-bold whitespace-nowrap">
               {isEditMode ? 'Edit Agent' : copyId ? 'Copy Agent' : 'Create New Agent'}
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground">

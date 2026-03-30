@@ -79,11 +79,11 @@ export function AllCallSummariesPage() {
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-heading-primary">
+            <h1 className="text-xl sm:text-2xl font-bold">
               Call Summaries
             </h1>
-            <p className="text-sm sm:text-base text-muted-foreground">
-              View all call summaries across all agents
+            <p className="text-sm text-muted-foreground mt-1">
+              {summaries ? `${summaries.length} call${summaries.length !== 1 ? 's' : ''}` : 'Loading...'}
             </p>
           </div>
           

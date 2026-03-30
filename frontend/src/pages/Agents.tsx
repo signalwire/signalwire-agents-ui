@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, Copy, Edit, Trash2, MoreVertical, ArrowLeftRight, FileText } from 'lucide-react'
+import { Plus, Copy, Edit, Trash2, MoreVertical, ArrowLeftRight, FileText, Bot } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { agentsApi } from '@/api/agents'
@@ -146,22 +146,23 @@ export function AgentsPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {/* Agent Info */}
-                  <div className="space-y-2 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Voice:</span>{' '}
+                  <div className="space-y-2.5 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Voice</span>
                       <span className="font-medium">
                         {agent.config.engine === 'elevenlabs'
                           ? getElevenLabsVoiceName(agent.config.voice)
                           : agent.config.voice}
                       </span>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground">Skills:</span>{' '}
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Skills</span>
                       <span className="font-medium">{agent.config.skills.length}</span>
                     </div>
                     {agent.config.basic_auth_user && (
-                      <div className="text-amber-600 dark:text-amber-500">
-                        🔒 Basic Auth Enabled
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Auth</span>
+                        <span className="font-medium">Basic Auth</span>
                       </div>
                     )}
                   </div>
@@ -174,7 +175,7 @@ export function AgentsPage() {
                         <Button 
                           size="icon" 
                           variant="ghost" 
-                          className="h-9 w-9 touch-manipulation"
+                          className="h-10 w-10 touch-manipulation"
                           data-dropdown-trigger
                         >
                           <MoreVertical className="h-4 w-4" />
@@ -228,15 +229,17 @@ export function AgentsPage() {
             ))}
           </div>
         ) : (
-          <Card className="text-center py-12">
-            <CardContent>
-              <p className="text-muted-foreground mb-4">
-                You haven't created any agents yet
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <Bot className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="font-semibold text-lg mb-2">No agents yet</h3>
+              <p className="text-muted-foreground text-center mb-4">
+                Create your first AI agent to get started
               </p>
               <Button asChild>
                 <Link to="/agents/new" className="gap-2">
                   <Plus className="h-4 w-4" />
-                  Create Your First Agent
+                  Create Agent
                 </Link>
               </Button>
             </CardContent>
