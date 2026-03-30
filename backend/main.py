@@ -58,14 +58,29 @@ app = FastAPI(
     redoc_url="/api/redoc" if settings.debug else None,
 )
 
-# Add CORS middleware
+# CORS: credentials=True is required for cookies. Wildcard origins are incompatible
+# with credentials, so expand to explicit origins when wildcard is configured.
+_cors_origins = settings.cors_origins
+if "*" in _cors_origins:
+    _cors_origins = [
+        f"https://{settings.hostname}:{settings.port}",
+        f"http://{settings.hostname}:8429",
+        "https://localhost:8430",
+        "http://localhost:8429",
+    ]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*", "X-CSRF-Token"],
+    expose_headers=["X-CSRF-Token"],
 )
+
+# CSRF middleware (added after CORS so preflight is handled first)
+from .core.csrf import CSRFMiddleware
+app.add_middleware(CSRFMiddleware)
 
 # Add rate limiter
 app.state.limiter = limiter

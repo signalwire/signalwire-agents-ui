@@ -391,10 +391,19 @@ async def test_skill_function(
     
     This endpoint is used by the UI to test skill configurations.
     """
-    # Verify authentication (simplified for testing endpoint)
-    auth_header = req.headers.get("authorization", "")
-    if not auth_header.startswith("Bearer "):
+    # Verify authentication — cookie first, then Bearer header
+    from ..core.cookies import get_jwt_from_cookie
+    token = get_jwt_from_cookie(req)
+    if not token:
+        auth_header = req.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1]
+    if not token:
         raise HTTPException(status_code=401, detail="Missing authentication")
+    try:
+        decode_jwt_token(token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
     
     logger.info(f"Testing skill function: skill={skill_name}, function={function_name}")
     

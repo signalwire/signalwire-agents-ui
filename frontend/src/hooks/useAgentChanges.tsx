@@ -23,6 +23,8 @@ export function useAgentChanges() {
   const [changeCount, setChangeCount] = useState(0);
   const [recentChanges, setRecentChanges] = useState<AgentChange[]>([]);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { toast } = useToast();
   const { setConnected, buildVersion, setBuildVersion } = useBackend();
   
@@ -50,7 +52,7 @@ export function useAgentChanges() {
           description: "New version detected. Reloading...",
           duration: 2000,
         });
-        setTimeout(() => {
+        reloadTimerRef.current = setTimeout(() => {
           window.location.reload();
         }, 1500);
       } else if (data.build_version) {
@@ -84,7 +86,7 @@ export function useAgentChanges() {
       console.error('SSE Error:', event);
       setConnected(false);
       // Reconnect after 5 seconds
-      setTimeout(() => {
+      reconnectTimerRef.current = setTimeout(() => {
         if (eventSourceRef.current === eventSource) {
           connect();
         }
@@ -102,6 +104,14 @@ export function useAgentChanges() {
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
+      }
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+      if (reloadTimerRef.current) {
+        clearTimeout(reloadTimerRef.current);
+        reloadTimerRef.current = null;
       }
     };
   }, [connect]);

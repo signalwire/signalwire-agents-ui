@@ -10,7 +10,7 @@ import logging
 
 from ..core.database import get_db
 from ..models import Agent, Token
-from ..core.security import verify_jwt_token
+from ..core.security import verify_jwt_token, require_role
 from ..core.audit import create_audit_log, get_request_metadata
 from ..core.config import get_swml_url
 from ..core.swml_generator import generate_swml
@@ -159,7 +159,7 @@ async def create_agent(
     request: Request,
     agent_data: AgentCreate,
     db: AsyncSession = Depends(get_db),
-    auth_data: Dict[str, Any] = Depends(verify_jwt_token)
+    auth_data: Dict[str, Any] = Depends(require_role("user"))
 ) -> AgentResponse:
     """Create a new agent."""
     # Create agent
@@ -274,7 +274,7 @@ async def update_agent(
     agent_data: AgentUpdate,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    auth_data: Dict[str, Any] = Depends(verify_jwt_token)
+    auth_data: Dict[str, Any] = Depends(require_role("user"))
 ) -> AgentResponse:
     """Update an agent."""
     # Log the incoming data
@@ -374,7 +374,7 @@ async def replace_agent(
     request: Request,
     source_agent_id: UUID = Body(..., embed=True),
     db: AsyncSession = Depends(get_db),
-    auth_data: Dict[str, Any] = Depends(verify_jwt_token)
+    auth_data: Dict[str, Any] = Depends(require_role("user"))
 ) -> AgentResponse:
     """Replace an agent's configuration with another agent's configuration."""
     # Get both agents
@@ -432,7 +432,7 @@ async def delete_agent(
     agent_id: UUID,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    auth_data: Dict[str, Any] = Depends(verify_jwt_token)
+    auth_data: Dict[str, Any] = Depends(require_role("user"))
 ) -> Dict[str, str]:
     """Delete an agent."""
     # Get existing agent

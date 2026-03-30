@@ -1,6 +1,6 @@
 """Security and authentication utilities."""
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from jose import JWTError, jwt
 from fastapi import HTTPException, Security, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -14,16 +14,34 @@ from ..models import Token
 
 logger = logging.getLogger(__name__)
 
-# Security scheme
-security = HTTPBearer()
+# Role hierarchy: admin > user > viewer
+ROLE_HIERARCHY = {"admin": 3, "user": 2, "viewer": 1}
+
+# Security scheme — auto_error=False so missing header doesn't 401 before we check cookies
+security = HTTPBearer(auto_error=False)
 
 
 async def verify_jwt_token(
-    credentials: HTTPAuthorizationCredentials = Security(security),
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Security(security),
     db: AsyncSession = Depends(get_db)
 ) -> Dict[str, Any]:
-    """Verify JWT bearer token and return token data."""
-    token = credentials.credentials
+    """Verify JWT from cookie (preferred) or Bearer header (fallback)."""
+    from .cookies import get_jwt_from_cookie
+
+    # 1. Try cookie first
+    token = get_jwt_from_cookie(request)
+
+    # 2. Fall back to Bearer header
+    if not token and credentials:
+        token = credentials.credentials
+
+    if not token:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     
     try:
         # Decode JWT token
@@ -139,3 +157,28 @@ def decode_skill_jwt_token(token: str) -> Dict[str, Any]:
             detail="Could not validate skill token",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+def require_role(minimum_role: str):
+    """Dependency factory that checks the token's role meets the minimum required.
+
+    Usage:
+        @router.get("/admin-only")
+        async def admin_endpoint(auth_data = Depends(require_role("admin"))):
+            ...
+    """
+    min_level = ROLE_HIERARCHY.get(minimum_role, 0)
+
+    async def _check_role(auth_data: Dict[str, Any] = Depends(verify_jwt_token)) -> Dict[str, Any]:
+        token_obj = auth_data["token"]
+        token_role = getattr(token_obj, "role", "admin") or "admin"
+        token_level = ROLE_HIERARCHY.get(token_role, 0)
+
+        if token_level < min_level:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Requires {minimum_role} role",
+            )
+        return auth_data
+
+    return _check_role

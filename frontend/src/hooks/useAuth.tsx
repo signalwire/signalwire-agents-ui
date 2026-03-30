@@ -2,10 +2,15 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authApi, LoginRequest } from '@/api/auth'
 
+export type UserRole = 'admin' | 'user' | 'viewer'
+
 interface AuthContextType {
   isAuthenticated: boolean
   tokenName: string | null
+  role: UserRole | null
   isLoading: boolean
+  isAdmin: boolean
+  isViewer: boolean
   login: (data: LoginRequest) => Promise<void>
   logout: () => void
 }
@@ -13,66 +18,60 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // Initialize auth state from localStorage
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    const token = localStorage.getItem('auth_token')
-    const name = localStorage.getItem('token_name')
-    return !!(token && name)
-  })
-  const [tokenName, setTokenName] = useState<string | null>(() => {
-    return localStorage.getItem('token_name')
-  })
-  const [isLoading] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [tokenName, setTokenName] = useState<string | null>(null)
+  const [role, setRole] = useState<UserRole | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Re-check auth status when component mounts
-    const token = localStorage.getItem('auth_token')
-    const name = localStorage.getItem('token_name')
-    if (token && name) {
-      setIsAuthenticated(true)
-      setTokenName(name)
-    } else {
-      setIsAuthenticated(false)
-      setTokenName(null)
-    }
+    // Check auth status by calling /api/auth/me (reads the httpOnly cookie server-side)
+    authApi.me()
+      .then((data) => {
+        setIsAuthenticated(true)
+        setTokenName(data.name)
+        setRole((data.role as UserRole) || 'admin')
+        localStorage.setItem('token_name', data.name)
+      })
+      .catch(() => {
+        setIsAuthenticated(false)
+        setTokenName(null)
+        setRole(null)
+        localStorage.removeItem('token_name')
+      })
+      .finally(() => {
+        setIsLoading(false)
+      })
   }, [])
 
   const login = async (data: LoginRequest) => {
-    try {
-      const response = await authApi.login(data)
-      localStorage.setItem('auth_token', response.access_token)
-      localStorage.setItem('token_name', response.name)
-      
-      // Store login timestamp if remember me is enabled
-      if (data.remember_me) {
-        localStorage.setItem('login_timestamp', new Date().toISOString())
-        localStorage.setItem('remember_me', 'true')
-      } else {
-        localStorage.removeItem('login_timestamp')
-        localStorage.removeItem('remember_me')
-      }
-      
-      setIsAuthenticated(true)
-      setTokenName(response.name)
-      navigate('/')
-    } catch (error) {
-      throw error
-    }
+    const response = await authApi.login(data)
+    // The httpOnly cookie is set by the server response automatically.
+    localStorage.setItem('token_name', response.name)
+    setIsAuthenticated(true)
+    setTokenName(response.name)
+    setRole((response.role as UserRole) || 'admin')
+    navigate('/')
   }
 
-  const logout = () => {
-    localStorage.removeItem('auth_token')
+  const logout = async () => {
+    try {
+      await authApi.logout()
+    } catch {
+      // Even if the server call fails, clear local state
+    }
     localStorage.removeItem('token_name')
-    localStorage.removeItem('login_timestamp')
-    localStorage.removeItem('remember_me')
     setIsAuthenticated(false)
     setTokenName(null)
+    setRole(null)
     navigate('/login')
   }
 
+  const isAdmin = role === 'admin'
+  const isViewer = role === 'viewer'
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, tokenName, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, tokenName, role, isLoading, isAdmin, isViewer, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

@@ -278,45 +278,60 @@ async def upload_media(
     # Ensure directory exists
     file_path.parent.mkdir(parents=True, exist_ok=True)
     
-    # Save file with size check
+    # Save file to temp path first, move to final location after DB commit
+    temp_path = file_path.with_suffix(file_path.suffix + '.tmp')
     size = 0
-    async with aiofiles.open(file_path, 'wb') as f:
-        while chunk := await file.read(8192):
-            size += len(chunk)
-            if size > max_size:
-                # Clean up partial file
-                await f.close()
-                os.unlink(file_path)
-                raise HTTPException(400, f"File too large (max {max_size // 1024 // 1024}MB)")
-            await f.write(chunk)
-    
+    try:
+        async with aiofiles.open(temp_path, 'wb') as f:
+            while chunk := await file.read(8192):
+                size += len(chunk)
+                if size > max_size:
+                    raise HTTPException(400, f"File too large (max {max_size // 1024 // 1024}MB)")
+                await f.write(chunk)
+    except HTTPException:
+        if temp_path.exists():
+            os.unlink(temp_path)
+        raise
+    except Exception:
+        if temp_path.exists():
+            os.unlink(temp_path)
+        raise
+
     # TODO: Extract duration for audio/video files
     duration = None
-    
-    # Save to database
-    result = await db.execute(
-        text("""
-        INSERT INTO media_files 
-        (filename, original_filename, file_type, mime_type, category, 
-         file_size, duration_seconds, file_path, description, uploaded_by)
-        VALUES (:filename, :original_filename, :file_type, :mime_type, :category,
-                :file_size, :duration_seconds, :file_path, :description, :uploaded_by)
-        RETURNING id
-        """),
-        {
-            "filename": filename,
-            "original_filename": file.filename,
-            "file_type": file_type,
-            "mime_type": mime_type,
-            "category": category,
-            "file_size": size,
-            "duration_seconds": duration,
-            "file_path": str(file_path),
-            "description": description,
-            "uploaded_by": str(token.id)
-        }
-    )
-    await db.commit()
+
+    # Save to database first
+    try:
+        result = await db.execute(
+            text("""
+            INSERT INTO media_files
+            (filename, original_filename, file_type, mime_type, category,
+             file_size, duration_seconds, file_path, description, uploaded_by)
+            VALUES (:filename, :original_filename, :file_type, :mime_type, :category,
+                    :file_size, :duration_seconds, :file_path, :description, :uploaded_by)
+            RETURNING id
+            """),
+            {
+                "filename": filename,
+                "original_filename": file.filename,
+                "file_type": file_type,
+                "mime_type": mime_type,
+                "category": category,
+                "file_size": size,
+                "duration_seconds": duration,
+                "file_path": str(file_path),
+                "description": description,
+                "uploaded_by": str(token.id)
+            }
+        )
+        await db.commit()
+    except Exception:
+        if temp_path.exists():
+            os.unlink(temp_path)
+        raise
+
+    # DB commit succeeded, move temp file to final location
+    os.rename(temp_path, file_path)
     
     media_id = result.scalar()
     

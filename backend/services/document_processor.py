@@ -23,9 +23,12 @@ except ImportError:
     logger.info("Advanced chunking strategies not available. Install signalwire-agents[search] for full support.")
 
 
+_processing_locks: Dict[str, asyncio.Lock] = {}
+
+
 class DocumentProcessor:
     """Service for processing documents into searchable chunks."""
-    
+
     def __init__(self, chunk_size: int = 512, chunk_overlap: int = 100):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
@@ -71,16 +74,16 @@ class DocumentProcessor:
             logger.warning("BeautifulSoup not available. HTML support disabled.")
     
     async def process_document(
-        self, 
-        file_path: str, 
-        document_id: str, 
+        self,
+        file_path: str,
+        document_id: str,
         agent_id: str,
         db: AsyncSession,
         sse_callback: Optional[callable] = None
     ):
         """
         Process uploaded document into chunks with embeddings.
-        
+
         Args:
             file_path: Path to the uploaded file
             document_id: Document ID in database
@@ -88,6 +91,28 @@ class DocumentProcessor:
             db: Database session
             sse_callback: Optional callback for SSE updates
         """
+        # Per-document lock to prevent concurrent processing of the same document
+        if document_id not in _processing_locks:
+            _processing_locks[document_id] = asyncio.Lock()
+        lock = _processing_locks[document_id]
+
+        async with lock:
+            await self._process_document_locked(
+                file_path, document_id, agent_id, db, sse_callback
+            )
+
+        # Clean up the lock entry
+        _processing_locks.pop(document_id, None)
+
+    async def _process_document_locked(
+        self,
+        file_path: str,
+        document_id: str,
+        agent_id: str,
+        db: AsyncSession,
+        sse_callback: Optional[callable] = None
+    ):
+        """Internal method that runs under the per-document lock."""
         try:
             # Update status to 'processing'
             await db.execute(

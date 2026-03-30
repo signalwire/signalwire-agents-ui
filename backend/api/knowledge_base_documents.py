@@ -252,7 +252,7 @@ async def delete_document(
     # Audit log
     await audit_log(
         db,
-        user_id=current_user.id,
+        user_id=str(auth_data["token"].id),
         action="delete_kb_document",
         description=f"Deleted document {document.filename} from knowledge base {kb.name}",
         metadata={
@@ -321,10 +321,10 @@ async def retry_document_processing(
     document.processed_at = None
     
     # Delete existing chunks
+    from sqlalchemy import delete
     await db.execute(
-        update(KBChunk)
+        delete(KBChunk)
         .where(KBChunk.document_id == document_id)
-        .values({"id": None})  # This will trigger deletion
     )
     
     await db.commit()

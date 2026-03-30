@@ -14,11 +14,15 @@ logger = logging.getLogger(__name__)
 
 from ..core.database import get_db
 from ..auth import get_current_user
+from ..core.security import require_role
 from ..models import User, Setting, Token, AuditLog
 from ..core.config import settings as app_settings
 from ..core.audit import create_audit_log
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+# Admin-only dependency
+admin_required = require_role("admin")
 
 
 class SettingUpdate(BaseModel):
@@ -28,7 +32,7 @@ class SettingUpdate(BaseModel):
 # Settings endpoints
 @router.get("/settings")
 async def get_settings(
-    current_user: User = Depends(get_current_user),
+    auth_data: dict = Depends(admin_required),
     db: AsyncSession = Depends(get_db)
 ):
     """Get all admin settings"""
@@ -67,7 +71,7 @@ async def get_settings(
 async def update_setting(
     key: str,
     setting_update: SettingUpdate,
-    current_user: User = Depends(get_current_user),
+    auth_data: dict = Depends(admin_required),
     db: AsyncSession = Depends(get_db)
 ):
     """Update a specific setting"""
@@ -98,7 +102,7 @@ async def update_setting(
     # Log the change
     await create_audit_log(
         db,
-        user_id=current_user.id,
+        user_id=str(auth_data["token"].id),
         action="settings_update",
         description=f"Updated setting: {key}",
         metadata={"key": key, "value": value}
@@ -109,7 +113,7 @@ async def update_setting(
 # Security settings endpoints
 @router.get("/security")
 async def get_security_settings(
-    current_user: User = Depends(get_current_user),
+    auth_data: dict = Depends(admin_required),
     db: AsyncSession = Depends(get_db)
 ):
     """Get security-specific settings"""
@@ -130,7 +134,7 @@ async def get_security_settings(
 @router.put("/security")
 async def update_security_settings(
     security_settings: Dict[str, Any],
-    current_user: User = Depends(get_current_user),
+    auth_data: dict = Depends(admin_required),
     db: AsyncSession = Depends(get_db)
 ):
     """Update security settings"""
@@ -143,25 +147,26 @@ async def update_security_settings(
 # Token management endpoints
 @router.get("/tokens")
 async def list_tokens(
-    current_user: User = Depends(get_current_user),
+    auth_data: dict = Depends(admin_required),
     db: AsyncSession = Depends(get_db)
 ):
     """List all JWT tokens"""
     from sqlalchemy import text
     result = await db.execute(
         text("""
-        SELECT id, name, token, created_at, expires_at, last_used_at, is_active
+        SELECT id, name, token, role, created_at, expires_at, last_used_at, is_active
         FROM tokens
         ORDER BY created_at DESC
         """)
     )
-    
+
     tokens = []
     for row in result:
         tokens.append({
             "id": row.id,
             "name": row.name,
-            "token": row.token if row.is_active else "***",  # Hide revoked tokens
+            "token": row.token if row.is_active else "***",
+            "role": row.role or "admin",
             "created_at": row.created_at.isoformat(),
             "expires_at": row.expires_at.isoformat(),
             "last_used_at": row.last_used_at.isoformat() if row.last_used_at else None,
@@ -173,17 +178,24 @@ async def list_tokens(
 @router.post("/tokens")
 async def create_token(
     data: Dict[str, Any],
-    current_user: User = Depends(get_current_user),
+    auth_data: dict = Depends(admin_required),
     db: AsyncSession = Depends(get_db)
 ):
     """Create a new JWT token"""
     name = data.get("name")
     expiry_days = data.get("expiry_days", 30)
-    
+    role = data.get("role", "user")
+
     if not name:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Token name is required"
+        )
+
+    if role not in ("admin", "user", "viewer"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Role must be admin, user, or viewer"
         )
     
     # Generate token
@@ -203,19 +215,20 @@ async def create_token(
     from sqlalchemy import text
     result = await db.execute(
         text("""
-        INSERT INTO tokens (id, name, token, created_at, expires_at, created_by, is_active)
-        VALUES (:id, :name, :token, :created_at, :expires_at, :created_by, :is_active)
+        INSERT INTO tokens (id, name, token, role, created_at, expires_at, created_by, is_active)
+        VALUES (:id, :name, :token, :role, :created_at, :expires_at, :created_by, :is_active)
         RETURNING id
         """),
-        {"id": token_id, "name": name, "token": token, "created_at": datetime.utcnow(), 
-         "expires_at": expires_at, "created_by": current_user.id, "is_active": True}
+        {"id": token_id, "name": name, "token": token, "role": role,
+         "created_at": datetime.utcnow(), "expires_at": expires_at,
+         "created_by": str(auth_data["token"].id), "is_active": True}
     )
     await db.commit()
     
     # Log the creation
     await create_audit_log(
         db,
-        user_id=current_user.id,
+        user_id=str(auth_data["token"].id),
         action="token_create",
         description=f"Created token: {name}",
         metadata={"token_id": token_id, "name": name, "expiry_days": expiry_days}
@@ -225,6 +238,7 @@ async def create_token(
         "id": token_id,
         "name": name,
         "token": token,
+        "role": role,
         "created_at": datetime.utcnow().isoformat(),
         "expires_at": expires_at.isoformat(),
         "is_active": True
@@ -233,7 +247,7 @@ async def create_token(
 @router.delete("/tokens/{token_id}")
 async def revoke_token(
     token_id: str,
-    current_user: User = Depends(get_current_user),
+    auth_data: dict = Depends(admin_required),
     db: AsyncSession = Depends(get_db)
 ):
     """Revoke a JWT token"""
@@ -259,7 +273,7 @@ async def revoke_token(
     # Log the revocation
     await create_audit_log(
         db,
-        user_id=current_user.id,
+        user_id=str(auth_data["token"].id),
         action="token_revoke",
         description=f"Revoked token: {token.name}",
         metadata={"token_id": token_id, "name": token.name}
@@ -270,7 +284,7 @@ async def revoke_token(
 # System info endpoints
 @router.get("/system/info")
 async def get_system_info(
-    current_user: User = Depends(get_current_user),
+    auth_data: dict = Depends(admin_required),
     db: AsyncSession = Depends(get_db)
 ):
     """Get system information"""
@@ -357,7 +371,7 @@ async def get_system_info(
 @router.get("/audit-logs")
 async def get_audit_logs(
     limit: int = 10,
-    current_user: User = Depends(get_current_user),
+    auth_data: dict = Depends(admin_required),
     db: AsyncSession = Depends(get_db)
 ):
     """Get recent audit logs"""
@@ -388,7 +402,7 @@ async def get_audit_logs(
 # Language configuration endpoints
 @router.get("/settings/language-configs")
 async def get_language_configs(
-    current_user: User = Depends(get_current_user),
+    auth_data: dict = Depends(admin_required),
     db: AsyncSession = Depends(get_db)
 ):
     """Get language configuration settings"""
@@ -416,7 +430,7 @@ async def get_language_configs(
 @router.post("/settings/language-configs")
 async def save_language_configs(
     data: Dict[str, Any],
-    current_user: User = Depends(get_current_user),
+    auth_data: dict = Depends(admin_required),
     db: AsyncSession = Depends(get_db)
 ):
     """Save language configuration settings"""
@@ -460,7 +474,7 @@ async def save_language_configs(
     # Log the change
     await create_audit_log(
         db,
-        user_id=current_user.id,
+        user_id=str(auth_data["token"].id),
         action="language_config_update",
         description="Updated language configuration",
         metadata={"configs_count": len(configs), "presets_count": len(selected_presets)}

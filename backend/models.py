@@ -21,10 +21,11 @@ class User(Base):
 
 class Token(Base):
     __tablename__ = "tokens"
-    
+
     id = Column(String, primary_key=True)
     token = Column(Text, unique=True, nullable=False)
     name = Column(String, nullable=False)
+    role = Column(String, default="admin")  # "admin", "user", or "viewer"
     created_at = Column(DateTime, default=datetime.utcnow)
     expires_at = Column(DateTime, nullable=False)
     last_used_at = Column(DateTime)
@@ -70,7 +71,7 @@ class CallSummary(Base):
     __tablename__ = "call_summaries"
     
     id = Column(String, primary_key=True)
-    agent_id = Column(UUID(as_uuid=True), ForeignKey("agents.id"), nullable=False)
+    agent_id = Column(UUID(as_uuid=True), ForeignKey("agents.id"), nullable=False, index=True)
     call_id = Column(String, unique=True, index=True)
     ai_session_id = Column(String)
     
@@ -195,7 +196,7 @@ class KBDocument(Base):
     __tablename__ = "kb_documents"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    collection_id = Column(UUID(as_uuid=True), ForeignKey("kb_collections.id", ondelete="CASCADE"), nullable=False)
+    collection_id = Column(UUID(as_uuid=True), ForeignKey("kb_collections.id", ondelete="CASCADE"), nullable=False, index=True)
     filename = Column(String(255), nullable=False)
     file_path = Column(String(512), nullable=False)
     file_type = Column(String(50))
@@ -221,7 +222,7 @@ class KBChunk(Base):
     __tablename__ = "kb_chunks"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    document_id = Column(UUID(as_uuid=True), ForeignKey("kb_documents.id", ondelete="CASCADE"), nullable=False)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("kb_documents.id", ondelete="CASCADE"), nullable=False, index=True)
     chunk_index = Column(Integer, nullable=False)
     content = Column(Text, nullable=False)
     embedding = Column(Vector(384))  # 384 dimensions for all-MiniLM-L6-v2

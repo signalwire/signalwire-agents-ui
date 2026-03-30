@@ -184,17 +184,9 @@ async def check_env_var(
             source="user",
             is_set=True
         )
-    
-    # Check system env vars
-    import os
-    if os.environ.get(name):
-        return EnvVarStatusResponse(
-            exists=True,
-            source="system",
-            is_set=True
-        )
-    
-    # Not found
+
+    # Not found in user-defined vars
+    # Note: we intentionally do NOT probe system env vars to avoid information disclosure
     return EnvVarStatusResponse(
         exists=False,
         source=None,

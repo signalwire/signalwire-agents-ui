@@ -1,25 +1,33 @@
 import axios, { AxiosError } from 'axios'
 
-// Create axios instance
+/** Read a cookie value by name. */
+function getCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'))
+  return match ? decodeURIComponent(match[2]) : null
+}
+
+// Create axios instance — cookies are sent automatically
 export const apiClient = axios.create({
   baseURL: '/api',
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 })
 
-// Request interceptor to add auth token
+// Request interceptor: attach CSRF token on mutating requests
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('auth_token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+    const method = (config.method || '').toUpperCase()
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+      const csrfToken = getCookie('csrf_token')
+      if (csrfToken) {
+        config.headers['X-CSRF-Token'] = csrfToken
+      }
     }
     return config
   },
-  (error) => {
-    return Promise.reject(error)
-  }
+  (error) => Promise.reject(error)
 )
 
 // Response interceptor to handle errors
@@ -29,11 +37,7 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       // Don't redirect if we're already on the login page
       if (!window.location.pathname.includes('/login')) {
-        // Clear auth data and redirect to login
-        localStorage.removeItem('auth_token')
         localStorage.removeItem('token_name')
-        localStorage.removeItem('login_timestamp')
-        localStorage.removeItem('remember_me')
         window.location.href = '/login'
       }
     }

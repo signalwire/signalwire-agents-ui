@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS tokens (
     id VARCHAR(255) PRIMARY KEY,
     token TEXT UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
+    role VARCHAR(20) DEFAULT 'admin',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     expires_at TIMESTAMP NOT NULL,
     last_used_at TIMESTAMP,
@@ -327,6 +328,15 @@ BEGIN
         
         -- Record migration
         INSERT INTO schema_migrations (version) VALUES ('add-kb-settings-stats');
+    END IF;
+END $$;
+
+-- MIGRATION: add-token-role
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM schema_migrations WHERE version = 'add-token-role') THEN
+        ALTER TABLE tokens ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'admin';
+        INSERT INTO schema_migrations (version) VALUES ('add-token-role');
     END IF;
 END $$;
 

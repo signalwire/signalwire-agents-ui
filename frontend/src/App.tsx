@@ -16,6 +16,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { BackendProvider, useBackend } from '@/contexts/BackendContext'
 import { BackendStatus } from '@/components/layout/BackendStatus'
 import { PWAInstallPrompt } from '@/components/PWAInstallPrompt'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 function AppContent() {
   const { isConnected, isReady } = useBackend();
@@ -143,11 +144,13 @@ function AppContent() {
 function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="signalwire-theme">
-      <AuthProvider>
-        <BackendProvider>
-          <AppContent />
-        </BackendProvider>
-      </AuthProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <BackendProvider>
+            <AppContent />
+          </BackendProvider>
+        </AuthProvider>
+      </ErrorBoundary>
     </ThemeProvider>
   )
 }

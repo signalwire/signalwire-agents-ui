@@ -67,6 +67,8 @@ WORKDIR /app
 COPY backend/ ./backend/
 COPY scripts/ ./scripts/
 COPY polly_voices.json ./backend/
+COPY alembic.ini ./alembic.ini
+COPY alembic/ ./alembic/
 
 # Layer 6: Configuration files
 COPY docker/nginx.conf /etc/nginx/sites-available/default
