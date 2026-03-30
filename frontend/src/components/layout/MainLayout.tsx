@@ -40,43 +40,43 @@ export function MainLayout({ children }: MainLayoutProps) {
                 />
                 <span className="text-sm sm:text-lg font-semibold whitespace-nowrap">Agent Builder</span>
               </Link>
-              <nav className="hidden md:flex items-center gap-4 select-none">
+              <nav className="hidden md:flex items-center gap-1 select-none">
                 <Link
                   to="/agents"
-                  className={`text-sm font-medium transition-colors hover:text-nav-hover ${
-                    location.pathname.startsWith('/agents') ? 'text-nav-active' : 'text-muted-foreground'
+                  className={`text-sm font-medium transition-colors px-3 py-1.5 rounded-md hover:text-foreground hover:bg-muted ${
+                    location.pathname.startsWith('/agents') ? 'text-nav-active border-b-2 border-brand-fuchsia rounded-b-none' : 'text-muted-foreground'
                   }`}
                 >
                   Agents
                 </Link>
                 <Link
                   to="/knowledge-bases"
-                  className={`text-sm font-medium transition-colors hover:text-nav-hover ${
-                    location.pathname.startsWith('/knowledge-bases') ? 'text-nav-active' : 'text-muted-foreground'
+                  className={`text-sm font-medium transition-colors px-3 py-1.5 rounded-md hover:text-foreground hover:bg-muted ${
+                    location.pathname.startsWith('/knowledge-bases') ? 'text-nav-active border-b-2 border-brand-fuchsia rounded-b-none' : 'text-muted-foreground'
                   }`}
                 >
                   Knowledge Bases
                 </Link>
                 <Link
                   to="/media"
-                  className={`text-sm font-medium transition-colors hover:text-nav-hover ${
-                    location.pathname.startsWith('/media') ? 'text-nav-active' : 'text-muted-foreground'
+                  className={`text-sm font-medium transition-colors px-3 py-1.5 rounded-md hover:text-foreground hover:bg-muted ${
+                    location.pathname.startsWith('/media') ? 'text-nav-active border-b-2 border-brand-fuchsia rounded-b-none' : 'text-muted-foreground'
                   }`}
                 >
                   Media Library
                 </Link>
                 <Link
                   to="/call-summaries"
-                  className={`text-sm font-medium transition-colors hover:text-nav-hover ${
-                    location.pathname === '/call-summaries' ? 'text-nav-active' : 'text-muted-foreground'
+                  className={`text-sm font-medium transition-colors px-3 py-1.5 rounded-md hover:text-foreground hover:bg-muted ${
+                    location.pathname === '/call-summaries' ? 'text-nav-active border-b-2 border-brand-fuchsia rounded-b-none' : 'text-muted-foreground'
                   }`}
                 >
                   Call Summaries
                 </Link>
                 <Link
                   to="/admin"
-                  className={`text-sm font-medium transition-colors hover:text-nav-hover ${
-                    location.pathname.startsWith('/admin') ? 'text-nav-active' : 'text-muted-foreground'
+                  className={`text-sm font-medium transition-colors px-3 py-1.5 rounded-md hover:text-foreground hover:bg-muted ${
+                    location.pathname.startsWith('/admin') ? 'text-nav-active border-b-2 border-brand-fuchsia rounded-b-none' : 'text-muted-foreground'
                   }`}
                 >
                   Admin

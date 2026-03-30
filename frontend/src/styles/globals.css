@@ -4,66 +4,66 @@
 
 @layer base {
   :root {
-    /* SignalWire Light Theme */
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 262 80% 50.6%; /* SignalWire Purple #6C2BD9 */
+    /* SignalWire Light Theme — surfaces from design system */
+    --background: 210 33% 98.8%;       /* #FAFBFC page */
+    --foreground: 40 6% 10%;           /* #1A1A18 default */
+    --card: 210 20% 95.7%;             /* #F3F4F6 surface */
+    --card-foreground: 40 6% 10%;      /* #1A1A18 */
+    --popover: 210 33% 98.8%;          /* #FAFBFC */
+    --popover-foreground: 40 6% 10%;   /* #1A1A18 */
+    --primary: 221 97% 48.6%;          /* #044EF4 Blue */
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 262 80% 95%; /* Light purple accent */
-    --accent-foreground: 262 80% 30%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 262 80% 50.6%;
+    --secondary: 210 20% 95.7%;        /* #F3F4F6 surface */
+    --secondary-foreground: 40 4% 22%; /* #3A3A38 */
+    --muted: 220 14% 92.2%;            /* #E8EAF0 raised */
+    --muted-foreground: 40 2% 45%;     /* #737371 */
+    --accent: 340 93% 56%;             /* #F72A72 Fuchsia accent */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;          /* #ef4444 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 14% 92.2%;           /* #E8EAF0 */
+    --input: 220 14% 92.2%;            /* #E8EAF0 */
+    --ring: 221 97% 48.6%;             /* #044EF4 Blue focus */
     --radius: 0.5rem;
-    /* Navigation colors */
-    --nav-active: 219 91% 45%; /* Blue #0B7CED for light theme */
-    --nav-hover: 219 91% 40%;
-    /* Heading colors */
-    --heading: 240 10% 3.9%; /* Dark for light theme */
-    --heading-primary: 342 84% 64%; /* Fuschia #f72a72 for main headings */
-    --heading-secondary: 342 84% 64%; /* Fuschia #f72a72 for section headings */
-    --heading-card: 342 84% 64%; /* Fuschia #f72a72 for card titles */
+    /* Navigation — neutral foreground, active distinguished by weight/indicator */
+    --nav-active: 234 72% 10%;         /* #070c2d deep navy */
+    --nav-hover: 40 4% 22%;            /* #3A3A38 secondary */
+    /* Headings — neutral per design system, NOT colored */
+    --heading: 40 6% 10%;              /* #1A1A18 */
+    --heading-primary: 234 72% 10%;    /* #070c2d deep navy */
+    --heading-secondary: 40 4% 22%;    /* #3A3A38 */
+    --heading-card: 234 72% 10%;       /* #070c2d deep navy */
   }
 
   .dark {
-    /* SignalWire Dark Theme */
-    --background: 240 10% 3.9%; /* Almost black */
-    --foreground: 0 0% 98%;
-    --card: 240 10% 6%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 6%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 262 80% 50.6%; /* SignalWire Purple #6C2BD9 */
+    /* SignalWire Dark Theme — surfaces from design system */
+    --background: 240 27% 7.5%;        /* #0e0e18 page */
+    --foreground: 240 14% 95.3%;       /* #f0f0f4 default */
+    --card: 232 24% 12.5%;             /* #181a28 surface */
+    --card-foreground: 240 14% 95.3%;  /* #f0f0f4 */
+    --popover: 232 24% 12.5%;          /* #181a28 */
+    --popover-foreground: 240 14% 95.3%;
+    --primary: 221 97% 48.6%;          /* #044EF4 Blue */
     --primary-foreground: 0 0% 100%;
-    --secondary: 240 4.8% 15%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 4.8% 15%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 262 80% 20%; /* Dark purple accent */
-    --accent-foreground: 262 80% 90%;
-    --destructive: 0 62.8% 30.6%;
+    --secondary: 232 24% 17%;          /* #222436 raised */
+    --secondary-foreground: 240 10% 92.5%; /* #e8e8ec */
+    --muted: 232 24% 17%;              /* #222436 raised */
+    --muted-foreground: 240 4% 65%;    /* #a0a0aa */
+    --accent: 340 93% 56%;             /* #F72A72 Fuchsia accent */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 63% 31%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 262 80% 50.6%;
-    /* SignalWire Aqua for navigation */
-    --nav-active: 178 71% 60%; /* Lighter aqua for dark theme */
-    --nav-hover: 178 71% 50%;
-    /* Heading colors */
-    --heading: 0 0% 98%; /* Light for dark theme */
-    --heading-primary: 178 71% 60%; /* Aqua for dark theme */
-    --heading-secondary: 178 71% 50%; /* Darker aqua for dark theme */
-    --heading-card: 178 71% 65%; /* Lighter aqua for card titles */
+    --border: 232 10% 18%;             /* subtle border */
+    --input: 232 10% 18%;
+    --ring: 221 97% 48.6%;             /* #044EF4 Blue focus */
+    /* Navigation — neutral foreground, active distinguished by weight/indicator */
+    --nav-active: 240 14% 95.3%;       /* #f0f0f4 foreground */
+    --nav-hover: 240 10% 92.5%;        /* #e8e8ec secondary */
+    /* Headings — neutral per design system, NOT colored */
+    --heading: 240 14% 95.3%;          /* #f0f0f4 cool white */
+    --heading-primary: 240 14% 95.3%;  /* #f0f0f4 */
+    --heading-secondary: 240 10% 92.5%;/* #e8e8ec */
+    --heading-card: 240 14% 95.3%;     /* #f0f0f4 */
   }
 }
 
@@ -72,11 +72,21 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-  
+
   h1, h2, h3, h4, h5, h6 {
-    @apply text-heading;
+    @apply text-heading font-heading font-bold;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  code, pre, kbd, samp {
+    @apply font-mono;
+    line-height: 1.75;
   }
   
   /* Prevent text selection on UI elements */
@@ -173,16 +183,16 @@
     }
   }
   
-  /* Better touch targets for mobile */
+  /* Better touch targets for mobile — 48px per design system */
   @media (max-width: 768px) {
     button, [role="button"], input, select, textarea {
-      min-height: 44px;
+      min-height: 48px;
     }
-    
+
     /* Ensure tap targets are large enough */
     .tap-target {
-      min-width: 44px;
-      min-height: 44px;
+      min-width: 48px;
+      min-height: 48px;
     }
   }
   

@@ -17,6 +17,11 @@ module.exports = {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ["'Lexend'", "sans-serif"],
+        heading: ["'Instrument Sans'", "sans-serif"],
+        mono: ["'JetBrains Mono'", "monospace"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -61,11 +66,28 @@ module.exports = {
           secondary: "hsl(var(--heading-secondary))",
           card: "hsl(var(--heading-card))",
         },
+        /* SignalWire brand colors for direct use */
+        brand: {
+          blue: "#044EF4",
+          fuchsia: "#F72A72",
+          turquoise: "#40E0D0",
+          gold: "#FFD700",
+          purple: "#601BE6",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      letterSpacing: {
+        heading: "-0.02em",
+        eyebrow: "0.14em",
+      },
+      lineHeight: {
+        body: "1.7",
+        heading: "1.2",
+        code: "1.75",
       },
       keyframes: {
         "accordion-down": {
