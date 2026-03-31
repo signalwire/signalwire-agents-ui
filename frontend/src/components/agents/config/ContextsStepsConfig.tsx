@@ -22,6 +22,22 @@ export interface ContextSection {
   bullets?: string[]
 }
 
+export interface GatherQuestion {
+  key: string
+  question: string
+  type?: string
+  confirm?: boolean
+  prompt?: string
+  functions?: string[]
+}
+
+export interface GatherInfo {
+  questions: GatherQuestion[]
+  output_key?: string
+  completion_action?: string
+  prompt?: string
+}
+
 export interface Step {
   id: string
   name: string
@@ -30,6 +46,9 @@ export interface Step {
   valid_steps: string[]
   valid_contexts: string[]
   restricted_functions?: string[]
+  gather_info?: GatherInfo
+  skip_user_turn?: boolean
+  end?: boolean
 }
 
 export interface Context {
@@ -829,6 +848,188 @@ export function ContextsStepsConfig({
                                         </div>
                                       </div>
                                     )}
+
+                                    {/* Skip User Turn */}
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <Label htmlFor={`skip-turn-${step.id}`} className="text-sm">Skip User Turn</Label>
+                                        <HelpTooltip content="Proceed to the next step without waiting for user input" />
+                                      </div>
+                                      <Switch
+                                        id={`skip-turn-${step.id}`}
+                                        checked={step.skip_user_turn || false}
+                                        onCheckedChange={(checked) => updateStep(currentContext.id, step.id, { skip_user_turn: checked })}
+                                      />
+                                    </div>
+
+                                    {/* End Flow */}
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <Label htmlFor={`end-flow-${step.id}`} className="text-sm">End Flow</Label>
+                                        <HelpTooltip content="Exit the contexts system and return to normal conversation" />
+                                      </div>
+                                      <Switch
+                                        id={`end-flow-${step.id}`}
+                                        checked={step.end || false}
+                                        onCheckedChange={(checked) => updateStep(currentContext.id, step.id, { end: checked })}
+                                      />
+                                    </div>
+
+                                    {/* Gather Info */}
+                                    <div className="space-y-3">
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          <Label className="text-sm font-medium">Gather Info</Label>
+                                          <HelpTooltip content="Collect structured data from the user one question at a time. Answers are stored in global_data." />
+                                        </div>
+                                        <Switch
+                                          checked={!!step.gather_info}
+                                          onCheckedChange={(checked) => {
+                                            if (checked) {
+                                              updateStep(currentContext.id, step.id, {
+                                                gather_info: { questions: [{ key: '', question: '' }] }
+                                              })
+                                            } else {
+                                              updateStep(currentContext.id, step.id, { gather_info: undefined })
+                                            }
+                                          }}
+                                        />
+                                      </div>
+
+                                      {step.gather_info && (
+                                        <div className="space-y-3 pl-1 border-l-2 border-border ml-1">
+                                          <div className="pl-3 space-y-3">
+                                            {/* Output Key */}
+                                            <div className="space-y-1">
+                                              <Label className="text-xs text-muted-foreground">Output Key</Label>
+                                              <Input
+                                                value={step.gather_info.output_key || ''}
+                                                onChange={(e) => updateStep(currentContext.id, step.id, {
+                                                  gather_info: { ...step.gather_info!, output_key: e.target.value || undefined }
+                                                })}
+                                                placeholder="e.g., patient_info"
+                                                className="h-8 text-sm"
+                                              />
+                                            </div>
+
+                                            {/* Preamble Prompt */}
+                                            <div className="space-y-1">
+                                              <Label className="text-xs text-muted-foreground">Preamble</Label>
+                                              <Input
+                                                value={step.gather_info.prompt || ''}
+                                                onChange={(e) => updateStep(currentContext.id, step.id, {
+                                                  gather_info: { ...step.gather_info!, prompt: e.target.value || undefined }
+                                                })}
+                                                placeholder="Context for why these questions are being asked..."
+                                                className="h-8 text-sm"
+                                              />
+                                            </div>
+
+                                            {/* Completion Action */}
+                                            <div className="space-y-1">
+                                              <Label className="text-xs text-muted-foreground">When Complete</Label>
+                                              <Select
+                                                value={step.gather_info.completion_action || '_stay'}
+                                                onValueChange={(value) => updateStep(currentContext.id, step.id, {
+                                                  gather_info: { ...step.gather_info!, completion_action: value === '_stay' ? undefined : value }
+                                                })}
+                                              >
+                                                <SelectTrigger className="h-8 text-sm">
+                                                  <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                  <SelectItem value="_stay">Stay in step</SelectItem>
+                                                  <SelectItem value="next_step">Next step</SelectItem>
+                                                  {currentContext.steps
+                                                    .filter(s => s.id !== step.id)
+                                                    .map(s => (
+                                                      <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                                    ))
+                                                  }
+                                                </SelectContent>
+                                              </Select>
+                                            </div>
+
+                                            {/* Questions */}
+                                            <div className="space-y-2">
+                                              <Label className="text-xs text-muted-foreground">Questions</Label>
+                                              {step.gather_info.questions.map((q, qIdx) => (
+                                                <div key={qIdx} className="rounded-md border border-border p-3 space-y-2">
+                                                  <div className="flex items-center justify-between gap-2">
+                                                    <Input
+                                                      value={q.key}
+                                                      onChange={(e) => {
+                                                        const newQuestions = [...step.gather_info!.questions]
+                                                        newQuestions[qIdx] = { ...q, key: e.target.value }
+                                                        updateStep(currentContext.id, step.id, {
+                                                          gather_info: { ...step.gather_info!, questions: newQuestions }
+                                                        })
+                                                      }}
+                                                      placeholder="key_name"
+                                                      className="h-8 text-sm font-mono w-1/3"
+                                                    />
+                                                    <div className="flex items-center gap-1">
+                                                      <Label className="text-xs text-muted-foreground">Confirm</Label>
+                                                      <Switch
+                                                        checked={q.confirm || false}
+                                                        onCheckedChange={(checked) => {
+                                                          const newQuestions = [...step.gather_info!.questions]
+                                                          newQuestions[qIdx] = { ...q, confirm: checked }
+                                                          updateStep(currentContext.id, step.id, {
+                                                            gather_info: { ...step.gather_info!, questions: newQuestions }
+                                                          })
+                                                        }}
+                                                      />
+                                                      <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-7 w-7"
+                                                        onClick={() => {
+                                                          const newQuestions = step.gather_info!.questions.filter((_, i) => i !== qIdx)
+                                                          updateStep(currentContext.id, step.id, {
+                                                            gather_info: { ...step.gather_info!, questions: newQuestions.length > 0 ? newQuestions : [{ key: '', question: '' }] }
+                                                          })
+                                                        }}
+                                                      >
+                                                        <Trash2 className="h-3 w-3" />
+                                                      </Button>
+                                                    </div>
+                                                  </div>
+                                                  <Input
+                                                    value={q.question}
+                                                    onChange={(e) => {
+                                                      const newQuestions = [...step.gather_info!.questions]
+                                                      newQuestions[qIdx] = { ...q, question: e.target.value }
+                                                      updateStep(currentContext.id, step.id, {
+                                                        gather_info: { ...step.gather_info!, questions: newQuestions }
+                                                      })
+                                                    }}
+                                                    placeholder="What would you like to ask?"
+                                                    className="h-8 text-sm"
+                                                  />
+                                                </div>
+                                              ))}
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="w-full h-8 text-xs"
+                                                onClick={() => {
+                                                  updateStep(currentContext.id, step.id, {
+                                                    gather_info: {
+                                                      ...step.gather_info!,
+                                                      questions: [...step.gather_info!.questions, { key: '', question: '' }]
+                                                    }
+                                                  })
+                                                }}
+                                              >
+                                                <Plus className="h-3 w-3 mr-1" />
+                                                Add Question
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
                                   </CardContent>
                                 </CollapsibleContent>
                               </Collapsible>

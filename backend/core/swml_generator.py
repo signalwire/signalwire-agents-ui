@@ -4,8 +4,8 @@ from datetime import datetime, timedelta
 import logging
 import os
 
-from signalwire_agents import AgentBase, BedrockAgent
-from signalwire_agents.skills.registry import skill_registry
+from signalwire import AgentBase, BedrockAgent
+from signalwire.skills.registry import skill_registry
 from .config import settings
 from .security import create_skill_jwt_token
 
@@ -287,6 +287,34 @@ async def generate_swml(agent_config: Dict[str, Any], agent_id: str, db_session=
                             step_obj.set_functions('none')
                         else:
                             step_obj.set_functions(restricted_functions)
+
+                    # Set skip_user_turn
+                    if step.get('skip_user_turn'):
+                        step_obj.set_skip_user_turn(True)
+
+                    # Set end (exit contexts)
+                    if step.get('end'):
+                        step_obj.set_end(True)
+
+                    # Set gather_info
+                    if gather_info := step.get('gather_info'):
+                        questions = gather_info.get('questions', [])
+                        if questions:
+                            step_obj.set_gather_info(
+                                output_key=gather_info.get('output_key'),
+                                completion_action=gather_info.get('completion_action'),
+                                prompt=gather_info.get('prompt')
+                            )
+                            for q in questions:
+                                if q.get('key') and q.get('question'):
+                                    step_obj.add_gather_question(
+                                        key=q['key'],
+                                        question=q['question'],
+                                        type=q.get('type', 'string'),
+                                        confirm=q.get('confirm', False),
+                                        prompt=q.get('prompt'),
+                                        functions=q.get('functions')
+                                    )
     
     # Configure SWAIG webhook URL
     # The SDK will handle auth via basic auth in the SWML

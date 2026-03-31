@@ -27,7 +27,7 @@ class EmbeddingService:
                 self._model = SentenceTransformer(self._model_name)
                 logger.info("Embedding model loaded successfully")
             except ImportError:
-                logger.error("sentence-transformers not installed. Install with: pip install signalwire-agents[search-all]")
+                logger.error("sentence-transformers not installed. Install with: pip install signalwire[search-all]")
                 raise
             except Exception as e:
                 logger.error(f"Failed to load embedding model: {e}")

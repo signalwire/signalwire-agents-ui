@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 # Try to import from the SDK
 SDK_AVAILABLE = False
 try:
-    from signalwire_agents.skills.registry import skill_registry
+    from signalwire.skills.registry import skill_registry
     SDK_AVAILABLE = True
     
     def list_skills_with_params():
@@ -74,7 +74,7 @@ try:
     
     # Import other SDK functions
     try:
-        from signalwire_agents import add_skill_directory, register_skill
+        from signalwire import add_skill_directory, register_skill
     except ImportError:
         # Define stubs if not available
         def add_skill_directory(path):

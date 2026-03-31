@@ -317,14 +317,14 @@ async def get_system_info(
     
     # Get SDK version
     try:
-        import signalwire_agents
-        sdk_version = getattr(signalwire_agents, "__version__", "Unknown")
+        import signalwire
+        sdk_version = getattr(signalwire, "__version__", "Unknown")
     except:
         sdk_version = "Not installed"
     
     # Count installed skills
     try:
-        from signalwire_agents.skills.registry import skill_registry
+        from signalwire.skills.registry import skill_registry
         skills_list = skill_registry.list_skills()
         installed_skills = len(skills_list)
     except Exception as e:

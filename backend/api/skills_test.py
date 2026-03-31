@@ -11,14 +11,14 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
-from signalwire_agents import AgentBase
-from signalwire_agents.core.function_result import SwaigFunctionResult
+from signalwire import AgentBase
+from signalwire.core.function_result import FunctionResult
 from ..auth import get_current_user
 from ..core.database import get_db
 from ..models import EnvVar
 
 # Import DataMap execution from SDK
-from signalwire_agents.cli.execution.datamap_exec import execute_datamap_function, simple_template_expand
+from signalwire.cli.execution.datamap_exec import execute_datamap_function, simple_template_expand
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +107,7 @@ async def test_skill_function(
         
         # Resolve environment variables for skill parameters
         # For async sessions, we need to manually resolve env vars
-        from signalwire_agents.skills.registry import skill_registry
+        from signalwire.skills.registry import skill_registry
         skill_class = skill_registry.get_skill_class(request.skill_name)
         resolved_params = request.skill_params.copy()
         
@@ -176,13 +176,13 @@ async def test_skill_function(
                     verbose=True  # Enable verbose for detailed logs
                 )
                 
-                # Convert result to SwaigFunctionResult
+                # Convert result to FunctionResult
                 if isinstance(result_data, dict):
-                    result = SwaigFunctionResult(response=result_data.get('response', ''))
+                    result = FunctionResult(response=result_data.get('response', ''))
                     if 'action' in result_data and isinstance(result_data['action'], list):
                         result.add_actions(result_data['action'])
                 else:
-                    result = SwaigFunctionResult(response=str(result_data))
+                    result = FunctionResult(response=str(result_data))
                 
                 logs.append("DataMap execution completed successfully")
             except Exception as e:
@@ -214,8 +214,8 @@ async def test_skill_function(
         execution_time = (datetime.now() - start_time).total_seconds()
         logs.append(f"Function executed successfully in {execution_time:.3f}s")
         
-        if isinstance(result, SwaigFunctionResult):
-            # Format the action properly - it's a list in SwaigFunctionResult
+        if isinstance(result, FunctionResult):
+            # Format the action properly - it's a list in FunctionResult
             action_value = "return"
             if result.action and len(result.action) > 0:
                 # For testing, we'll just show the first action
@@ -295,7 +295,7 @@ async def get_skill_functions(
         ephemeral_agent = AgentBase(name=f"inspect-{skill_name}")
         
         # Resolve environment variables for skill parameters
-        from signalwire_agents.skills.registry import skill_registry
+        from signalwire.skills.registry import skill_registry
         skill_class = skill_registry.get_skill_class(skill_name)
         resolved_params = skill_params.copy()
         

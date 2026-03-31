@@ -9,8 +9,8 @@ import uuid
 import asyncio
 from datetime import datetime
 
-from signalwire_agents import AgentBase
-from signalwire_agents.core.function_result import SwaigFunctionResult
+from signalwire import AgentBase
+from signalwire.core.function_result import FunctionResult
 from ..core.database import get_db
 from ..core.security import decode_jwt_token, decode_skill_jwt_token
 from ..models import Agent
@@ -337,13 +337,13 @@ async def handle_swaig_function(
             result = await execute_with_timeout(result, timeout_seconds=30)
         
         # Convert result to SWAIG response format
-        if isinstance(result, SwaigFunctionResult):
-            # Handle SwaigFunctionResult
+        if isinstance(result, FunctionResult):
+            # Handle FunctionResult
             response = SWAIGResponse(
                 response=result.response,
                 action=result.action
             )
-            logger.info(f"SWAIG function {request.function} returned SwaigFunctionResult: {result.response[:100]}...")
+            logger.info(f"SWAIG function {request.function} returned FunctionResult: {result.response[:100]}...")
         elif isinstance(result, dict):
             # Handle dict response
             if "response" in result:
@@ -461,7 +461,7 @@ async def test_skill_function(
         # Format the result
         execution_time = (datetime.now() - start_time).total_seconds()
         
-        if isinstance(result, SwaigFunctionResult):
+        if isinstance(result, FunctionResult):
             return {
                 "success": True,
                 "result": {

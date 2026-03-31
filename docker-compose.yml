@@ -20,8 +20,8 @@ services:
 
   app:
     build:
-      context: .
-      dockerfile: docker/Dockerfile
+      context: ..
+      dockerfile: signalwire-agents-ui/docker/Dockerfile
     restart: unless-stopped
     ports:
       - "8430:8430"
