@@ -42,8 +42,8 @@ RUN if [ -d "./signalwire-python" ]; then \
         python3.11 -m pip install --no-cache-dir -e "./signalwire-python[search-all]" && \
         python3.11 -m pip install --no-cache-dir signalwire-pom==2.7.1; \
     else \
-        echo "Installing signalwire from pip with search-all..." && \
-        python3.11 -m pip install --no-cache-dir "signalwire[search-all]"; \
+        echo "Installing signalwire-sdk from pip with search-all..." && \
+        python3.11 -m pip install --no-cache-dir "signalwire-sdk[search-all]"; \
     fi
 
 # Download spaCy language model for NLP features

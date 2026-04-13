@@ -20,7 +20,7 @@ try:
     ADVANCED_CHUNKING_AVAILABLE = True
 except ImportError:
     ADVANCED_CHUNKING_AVAILABLE = False
-    logger.info("Advanced chunking strategies not available. Install signalwire[search] for full support.")
+    logger.info("Advanced chunking strategies not available. Install signalwire-sdk[search] for full support.")
 
 
 _processing_locks: Dict[str, asyncio.Lock] = {}
@@ -336,7 +336,7 @@ class DocumentProcessor:
             return self._paragraph_chunking(text)
         else:
             # Default to simple sentence chunking for unsupported strategies
-            logger.warning(f"Chunking strategy '{self.chunking_strategy}' not supported without signalwire[search]. Using sentence chunking.")
+            logger.warning(f"Chunking strategy '{self.chunking_strategy}' not supported without signalwire-sdk[search]. Using sentence chunking.")
             return self._simple_sentence_chunking(text)
     
     def _simple_sentence_chunking(self, text: str) -> List[Dict[str, Any]]:
